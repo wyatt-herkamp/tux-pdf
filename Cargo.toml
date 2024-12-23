@@ -1,0 +1,33 @@
+[package]
+name = "tux-pdf"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Wyatt Jacob Herkamp <wherkamp@gmail.com>"]
+repository = "https://github.com/wyatt-herkamp/tux-pdf"
+
+[dependencies]
+lopdf = "0.34"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+ttf-parser = "0.25"
+time = { version = "0.3" }
+rand = { version = "0.8" }
+strum = { version = "0.26", features = ["derive"] }
+
+resvg = { version = "0.44", default-features = false, optional = true }
+
+image = { version = "0.25", optional = true }
+bitflags = "2"
+either = "1"
+derive_builder = "0.20"
+tracing = { version = "0.1" }
+derive_more = { version = "1", features = ["from"] }
+[dev-dependencies]
+anyhow = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[features]
+default = ["svg", "image"]
+svg = ["resvg"]

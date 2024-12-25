@@ -1,15 +1,12 @@
 mod test_utils;
 use test_utils::{destination_dir, fonts_dir};
 use tux_pdf::{
-    document::PdfDocument,
+    document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
     graphics::{
-        color::{Color, Rgb, BLACK_RGB, WHITE_RGB},
-        layouts::grid::{GridColumnMinWidth, GridStyleGroup, GridStyles},
+        color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
+        layouts::grid::{GridColumnMinWidth, GridStyleGroup},
         styles::{Margin, Padding},
-        table::{
-            AlternatingRowStyles, Column, Row, RowStyles, Table, TablePageRules, TableStyles,
-            TableValue,
-        },
+        table::{Column, Row, RowStyles, Table, TablePageRules, TableStyles, TableValue},
         TextStyle,
     },
     page::{page_sizes::A4, PdfPage},
@@ -28,7 +25,14 @@ fn table_test() -> anyhow::Result<()> {
         Column::from("Work Order"),
         Column::from("Notes").with_min_width(GridColumnMinWidth::AutoFill),
     ];
-
+    let even_row_style = RowStyles {
+        background_color: Some(GRAY_RGB),
+        ..Default::default()
+    };
+    let odd_row_style = RowStyles {
+        background_color: Some(WHITE_RGB),
+        ..Default::default()
+    };
     let mut actual_rows = Vec::new();
     for number in 0..50 {
         let location = format!("Location {}", number);
@@ -37,8 +41,7 @@ fn table_test() -> anyhow::Result<()> {
         let order_type = format!("Type {}", number);
         let order_size = format!("Size {}", number);
         let work_order = format!("Work Order {}", number);
-
-        actual_rows.push(Row::from(vec![
+        let mut row = Row::from(vec![
             location.into(),
             order_number.into(),
             customer_name.into(),
@@ -46,13 +49,20 @@ fn table_test() -> anyhow::Result<()> {
             order_size.into(),
             work_order.into(),
             TableValue::BlankSpace,
-        ]));
+        ]);
+        if number % 2 == 0 {
+            row = row.with_styles(even_row_style.clone());
+        } else {
+            row = row.with_styles(odd_row_style.clone());
+        }
+        actual_rows.push(row);
     }
     let mut doc = PdfDocument::new("Table Test");
+    let roboto_font_reader =
+        std::fs::File::open(fonts_dir().join("Roboto").join("Roboto-Regular.ttf"))?;
+    let roboto_font = OwnedPdfTtfFont::new_from_reader(roboto_font_reader, 0)?;
 
-    let roboto = doc.load_external_font(std::fs::File::open(
-        fonts_dir().join("Roboto").join("Roboto-Regular.ttf"),
-    )?)?;
+    let roboto = doc.font_map().register_external_font(roboto_font)?;
 
     let table = Table {
         columns,
@@ -63,32 +73,12 @@ fn table_test() -> anyhow::Result<()> {
                 font_size: 15.0.pt(),
                 ..Default::default()
             },
-            row_colors: AlternatingRowStyles {
-                even_row_styles: RowStyles {
-                    background_color: Some(Color::Rgb(Rgb::new_no_profile(
-                        0.59f32, 0.59f32, 0.59f32,
-                    ))),
-                    border_color: Some(BLACK_RGB),
-                    border_width: Some(1f32.pt()),
-                    ..Default::default()
-                },
-                odd_row_styles: RowStyles {
-                    background_color: Some(WHITE_RGB),
-                    border_color: Some(BLACK_RGB),
-                    border_width: Some(1f32.pt()),
-                    ..Default::default()
-                },
-            }
-            .into(),
-            grid_styles: GridStyles {
-                cell_content_padding: Padding::all(5f32.pt()),
-                outer_styles: Some(GridStyleGroup {
-                    background_color: None,
-                    border_color: Some(BLACK_RGB),
-                    border_width: Some(1f32.pt()),
-                }),
-                ..Default::default()
-            },
+            cell_content_padding: Padding::all(5f32.pt()),
+            outer_styles: Some(GridStyleGroup {
+                background_color: None,
+                border_color: Some(BLACK_RGB),
+                border_width: Some(1f32.pt()),
+            }),
             ..Default::default()
         },
         new_page: |_| {
@@ -101,7 +91,7 @@ fn table_test() -> anyhow::Result<()> {
                 table_stop_y: Some(table_end),
                 margin: Some(Margin::left_and_right(10f32.pt(), 10f32.pt())),
             };
-            (page_rules, page)
+            Ok((page_rules, page))
         },
     };
 

@@ -2,9 +2,7 @@ use lopdf::Object;
 
 use crate::{units::Pt, utils::copy_into};
 
-use super::{
-    color::Color, points_to_object_array, GraphicStyles, OperationKeys, PdfOperationType, Point,
-};
+use super::{color::Color, points_to_object_array, OperationKeys, PdfOperationType, Point};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StraightLine<U = Pt> {
@@ -39,13 +37,12 @@ where
             start,
             points: points.into_iter().map(Into::into).collect(),
             is_closed,
-            ..Default::default()
         }
     }
 }
 impl PdfOperationType for StraightLine {
     fn write(
-        &self,
+        self,
         _: &crate::document::PdfResources,
         writer: &mut super::OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
@@ -149,7 +146,7 @@ pub struct Line {
 
 impl PdfOperationType for Line {
     fn write(
-        &self,
+        self,
         _: &crate::document::PdfResources,
         writer: &mut super::OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {

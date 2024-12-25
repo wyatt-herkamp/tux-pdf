@@ -82,10 +82,22 @@ impl<U> Margin<U> {
     {
         super::add_two_optional(self.left, self.right)
     }
+    pub fn horizontal_or_default(&self, default: U) -> U
+    where
+        U: Copy + Add<Output = U> + Default,
+    {
+        self.horizontal_value().unwrap_or(default)
+    }
     pub fn vertical_value(&self) -> Option<U>
     where
         U: Copy + Add<Output = U>,
     {
         super::add_two_optional(self.top, self.bottom)
+    }
+    pub fn vertical_or_default(&self, default: U) -> U
+    where
+        U: Copy + Add<Output = U> + Default,
+    {
+        self.vertical_value().unwrap_or(default)
     }
 }

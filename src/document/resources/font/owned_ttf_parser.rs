@@ -3,18 +3,19 @@
 //! Based on [owned_ttf_parser](https://crates.io/crates/owned_ttf_parser)
 //!
 //! Why not just use owned_ttf_parser? Because I don't want to have to deal with another crate that is not a huge amount of code.
-use std::{
-    collections::HashMap, fmt::Debug, marker::PhantomPinned, mem, ops::Deref, pin::Pin, sync::Arc,
-};
-
+use ahash::{HashMap, HashMapExt};
+use std::{fmt::Debug, marker::PhantomPinned, mem, ops::Deref, pin::Pin, sync::Arc};
 use ttf_parser::Face;
+
+use crate::TuxPdfError;
 
 use super::{FontType, GlyphMetrics};
 #[derive(Debug, Clone, PartialEq)]
-pub struct PdfTtfFace {
+pub struct OwnedPdfTtfFont {
     inner: Arc<OwnedFace>,
 }
-impl Deref for PdfTtfFace {
+
+impl Deref for OwnedPdfTtfFont {
     type Target = OwnedFace;
 
     fn deref(&self) -> &Self::Target {
@@ -22,7 +23,17 @@ impl Deref for PdfTtfFace {
     }
 }
 
-impl PdfTtfFace {
+impl OwnedPdfTtfFont {
+    /// Create a new instance of [PdfTtfFace] from a reader
+    ///
+    /// If index is not known use 0
+    pub fn new_from_reader<R: std::io::Read>(mut font: R, index: u32) -> Result<Self, TuxPdfError> {
+        let mut buf = Vec::<u8>::new();
+        font.read_to_end(&mut buf)?;
+        let font = OwnedFace::from_vec_inner(buf, index)?;
+
+        Ok(Self::new(font))
+    }
     pub fn new(face: OwnedFace) -> Self {
         Self {
             inner: Arc::new(face),
@@ -32,7 +43,7 @@ impl PdfTtfFace {
         self.inner.as_face_ref()
     }
 }
-impl FontType for PdfTtfFace {
+impl FontType for OwnedPdfTtfFont {
     fn units_per_em(&self) -> u16 {
         self.inner.as_face_ref().units_per_em()
     }
@@ -48,7 +59,7 @@ impl FontType for PdfTtfFace {
     fn glyph_id(&self, c: char) -> Option<u16> {
         self.inner.as_face_ref().glyph_index(c).map(|x| x.0)
     }
-    fn glyph_ids(&self) -> std::collections::HashMap<u16, char> {
+    fn glyph_ids(&self) -> HashMap<u16, char> {
         let subtables = self
             .as_face_ref()
             .tables()
@@ -223,11 +234,11 @@ impl Drop for SelfRefVecFace {
 mod tests {
 
     use crate::{
-        document::{font_tests::DebugFontType, ttf_parser::OwnedFace},
+        document::{font_tests::DebugFontType, owned_ttf_parser::OwnedFace},
         tests::does_end_with_ttf,
     };
 
-    use super::PdfTtfFace;
+    use super::OwnedPdfTtfFont;
     // TODO: Test for memory leaks
     #[test]
     fn parse_roboto() -> anyhow::Result<()> {
@@ -242,7 +253,7 @@ mod tests {
             }
             let data = std::fs::read(&path)?;
             let face = OwnedFace::from_vec_inner(data, 0)?;
-            let pdf_ttf_font = PdfTtfFace::new(face);
+            let pdf_ttf_font = OwnedPdfTtfFont::new(face);
 
             let debug = DebugFontType(&pdf_ttf_font);
             println!("--- Font ({}) ---", path.display());

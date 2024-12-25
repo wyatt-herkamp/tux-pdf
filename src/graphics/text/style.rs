@@ -1,7 +1,7 @@
 use std::borrow::Cow;
-
+mod modifiers;
 use crate::{
-    document::{BuiltinFont, FontRef, PdfResources},
+    document::{FontRef, PdfResources},
     graphics::{
         color::{Color, ColorWriter},
         OperationKeys, OperationWriter, PdfOperationType,
@@ -10,6 +10,7 @@ use crate::{
     utils::{IsEmpty, PartailOrFull, PartialStruct},
     TuxPdfError,
 };
+pub use modifiers::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TextStyle {
@@ -19,7 +20,7 @@ pub struct TextStyle {
     pub fill_color: Option<Color>,
     pub outline_color: Option<Color>,
     pub word_spacing: Option<Pt>,
-
+    pub line_spacing: Option<Pt>,
     pub max_width: Option<Pt>,
 }
 
@@ -31,6 +32,7 @@ impl Default for TextStyle {
             fill_color: None,
             outline_color: None,
             word_spacing: None,
+            line_spacing: None,
             max_width: None,
         }
     }
@@ -93,13 +95,13 @@ impl PartialStruct for PartialTextStyle {
 
 impl PdfOperationType for TextStyle {
     fn write(
-        &self,
+        self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
         writer.add_operation(
             OperationKeys::TextFont,
-            vec![self.font_ref.clone().into(), self.font_size.into()],
+            vec![self.font_ref.into(), self.font_size.into()],
         );
 
         let color_writer = ColorWriter {

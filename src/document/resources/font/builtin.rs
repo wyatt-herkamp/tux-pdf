@@ -3,8 +3,10 @@ use lopdf::Dictionary;
 use crate::{
     document::types::{BuiltinFontSubType, FontEncoding, FontObject, PdfDirectoryType},
     graphics::size::Size,
-    units::Pt,
+    units::{Pt, UnitType},
 };
+
+use super::InternalFontType;
 
 /// The 14 built-in fonts per the PDF specification.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -24,9 +26,23 @@ pub enum BuiltinFont {
     Symbol,
     ZapfDingbats,
 }
-impl BuiltinFont {
-    pub fn calculate_size_of_text(&self, text: &str, font_size: Pt) -> Size {
-        Size::new(Pt(0f32), Pt(0f32))
+impl InternalFontType for BuiltinFont {
+    fn calculate_size_of_text(&self, text: &str, params: super::FontRenderSizeParams) -> Size {
+        // TODO figure out how to calculate the size of text for built-in fonts
+        Size {
+            width: (params.font_size * Pt::from(text.len())) / 2f32.pt(),
+            height: params.font_size,
+        }
+    }
+
+    fn size_of_char(&self, _: char, params: super::FontRenderSizeParams) -> Option<Size> {
+        Some(Size {
+            width: (params.font_size) / 2f32.pt(),
+            height: params.font_size,
+        })
+    }
+    fn encode_text(&self, text: String) -> Vec<u8> {
+        lopdf::Document::encode_text(&lopdf::Encoding::SimpleEncoding("WinAnsiEncoding"), &text)
     }
 }
 impl From<BuiltinFont> for Dictionary {

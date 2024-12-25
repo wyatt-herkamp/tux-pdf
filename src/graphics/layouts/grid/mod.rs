@@ -6,12 +6,10 @@ pub use types::*;
 
 use crate::{
     graphics::{
-        high::{OutlineRect, PaintedRect, RectangleStyleType},
+        shapes::{OutlineRect, PaintedRect, RectangleStyleType},
         size::Size,
-        GraphicItems, GraphicStyles, GraphicsGroup, PartialGraphicStyles,
-        PartialOrFullGraphicStyle, Point, StraightLine,
+        GraphicItems, GraphicStyles, GraphicsGroup, Point, StraightLine,
     },
-    units::{Pt, UnitType},
     utils::Merge,
 };
 mod types;

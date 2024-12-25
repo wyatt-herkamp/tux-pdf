@@ -3,7 +3,7 @@ use derive_more::derive::From;
 use crate::{document::PdfResources, TuxPdfError};
 
 use super::{
-    high::{OutlineRect, PaintedRect},
+    shapes::{OutlineRect, PaintedRect},
     GraphicStyles, OperationKeys, OperationWriter, PdfOperation, PdfOperationType,
 };
 
@@ -58,15 +58,15 @@ impl GraphicsGroup {
 }
 impl PdfOperationType for GraphicsGroup {
     fn write(
-        &self,
+        self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
         writer.add_operation(OperationKeys::SaveGraphicsState, vec![]);
-        if let Some(styles) = &self.styles {
+        if let Some(styles) = self.styles {
             styles.write(resources, writer)?;
         }
-        for item in &self.items {
+        for item in self.items {
             writer.add_operation(OperationKeys::SaveGraphicsState, vec![]);
             item.write(resources, writer)?;
             writer.add_operation(OperationKeys::RestoreGraphicsState, vec![]);
@@ -96,7 +96,7 @@ where
 }
 impl PdfOperationType for GraphicItems {
     fn write(
-        &self,
+        self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {

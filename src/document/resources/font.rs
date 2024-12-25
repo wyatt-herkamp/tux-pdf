@@ -1,15 +1,16 @@
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashSet},
     fmt::Debug,
-    io::Read,
 };
 mod builtin;
+mod font_type;
 pub use builtin::*;
-pub mod ttf_parser;
+pub use font_type::*;
+pub mod owned_ttf_parser;
+pub mod static_ttf_parser;
 use lopdf::{Dictionary, Object, Stream};
 use tracing::debug;
-use ttf_parser::PdfTtfFace;
 
 use crate::{
     document::{
@@ -25,86 +26,7 @@ use crate::{
 };
 
 use super::ObjectMapType;
-/// A trait for external font types.
-///
-/// This is used so we can support multiple font loading libraries.
-pub trait FontType {
-    fn units_per_em(&self) -> u16;
 
-    fn ascender(&self) -> i16;
-
-    fn descender(&self) -> i16;
-
-    fn italic_angle(&self) -> i64;
-
-    fn glyph_id(&self, c: char) -> Option<u16>;
-
-    fn glyph_ids(&self) -> HashMap<u16, char>;
-
-    fn glyph_count(&self) -> u16;
-
-    fn glyph_metrics(&self, glyph_id: u16) -> Option<GlyphMetrics>;
-
-    fn font_bytes(&self) -> &[u8];
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum DynFontTypes {
-    TtfParser(ttf_parser::PdfTtfFace),
-}
-impl FontType for DynFontTypes {
-    fn units_per_em(&self) -> u16 {
-        match self {
-            DynFontTypes::TtfParser(face) => face.units_per_em(),
-        }
-    }
-    fn italic_angle(&self) -> i64 {
-        match self {
-            DynFontTypes::TtfParser(face) => face.italic_angle(),
-        }
-    }
-
-    fn ascender(&self) -> i16 {
-        match self {
-            DynFontTypes::TtfParser(face) => face.ascender(),
-        }
-    }
-    fn glyph_ids(&self) -> HashMap<u16, char> {
-        match self {
-            DynFontTypes::TtfParser(face) => face.glyph_ids(),
-        }
-    }
-
-    fn descender(&self) -> i16 {
-        match self {
-            DynFontTypes::TtfParser(face) => face.descender(),
-        }
-    }
-
-    fn glyph_id(&self, c: char) -> Option<u16> {
-        match self {
-            DynFontTypes::TtfParser(face) => face.glyph_id(c),
-        }
-    }
-
-    fn glyph_count(&self) -> u16 {
-        match self {
-            DynFontTypes::TtfParser(face) => face.glyph_count(),
-        }
-    }
-
-    fn glyph_metrics(&self, glyph_id: u16) -> Option<GlyphMetrics> {
-        match self {
-            DynFontTypes::TtfParser(face) => face.glyph_metrics(glyph_id),
-        }
-    }
-
-    fn font_bytes(&self) -> &[u8] {
-        match self {
-            DynFontTypes::TtfParser(face) => face.font_bytes(),
-        }
-    }
-}
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GlyphMetrics {
     /// The width of the glyph, typically the horizontal advance.
@@ -178,23 +100,7 @@ impl PdfFontMap {
             registered_builtin_fonts: HashSet::new(),
         }
     }
-    pub fn parse_font<R>(&mut self, mut font: R) -> Result<FontRef, TuxPdfError>
-    where
-        R: Read,
-    {
-        let index = self.map.len() as u32;
-        let mut buf = Vec::<u8>::new();
-        font.read_to_end(&mut buf)?;
-        let font = ttf_parser::OwnedFace::from_vec_inner(buf, 0)?;
-        let font_id = self.new_id();
 
-        let font = ParsedFont {
-            font: DynFontTypes::TtfParser(PdfTtfFace::new(font)),
-            font_name: font_id.0.clone(),
-        };
-        self.map.insert(font_id.clone(), font);
-        Ok(FontRef::External(font_id))
-    }
     /// Register a built-in font.
     pub fn register_builtin_font(&mut self, font: BuiltinFont) -> FontRef {
         self.registered_builtin_fonts.insert(font);
@@ -203,8 +109,27 @@ impl PdfFontMap {
     pub fn is_built_in_registered(&self, font: &BuiltinFont) -> bool {
         self.registered_builtin_fonts.contains(font)
     }
+    pub fn register_external_font(
+        &mut self,
+        font: impl Into<DynFontTypes>,
+    ) -> Result<FontRef, TuxPdfError> {
+        let font = font.into();
+        let font_id = FontId::default();
+        if self.has_id(&font_id) {
+            return Err(TuxPdfError::ObjectCollectionError(font_id.0));
+        }
+        self.map.insert(
+            font_id.clone(),
+            ParsedFont {
+                font,
+                font_name: font_id.0.clone(),
+            },
+        );
+
+        Ok(FontRef::External(font_id))
+    }
     /// Register an external font.
-    pub fn register_external_font(&mut self, font: ParsedFont) -> FontRef {
+    pub fn register_parsed_external_font(&mut self, font: ParsedFont) -> FontRef {
         let font_id = self.new_id();
         self.map.insert(font_id.clone(), font);
         FontRef::External(font_id)
@@ -242,23 +167,77 @@ impl PdfFontMap {
         }
         dict
     }
+    pub fn internal_font_type(&self, font_ref: &FontRef) -> Option<InternalFontTypes> {
+        match font_ref {
+            FontRef::External(id) => self
+                .map
+                .get(id)
+                .map(|font| InternalFontTypes::External(font)),
+            FontRef::Builtin(builtin) => Some(InternalFontTypes::Builtin(*builtin)),
+        }
+    }
 }
+#[derive(Debug, Clone, PartialEq, Default, Copy)]
+pub(crate) struct FontRenderSizeParams {
+    pub font_size: Pt,
+}
+pub(crate) trait InternalFontType {
+    /// Calculate the size of the text.
+    fn calculate_size_of_text(&self, text: &str, params: FontRenderSizeParams) -> Size;
+    #[inline(always)]
+    fn calculate_height_of_text(&self, text: &str, params: FontRenderSizeParams) -> Pt {
+        self.calculate_size_of_text(text, params).height
+    }
+    fn size_of_char(&self, c: char, params: FontRenderSizeParams) -> Option<Size>;
 
+    fn encode_text(&self, text: String) -> Vec<u8>;
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum InternalFontTypes<'font> {
+    External(&'font ParsedFont),
+    Builtin(BuiltinFont),
+}
+impl InternalFontType for InternalFontTypes<'_> {
+    fn calculate_size_of_text(&self, text: &str, params: FontRenderSizeParams) -> Size {
+        match self {
+            InternalFontTypes::External(font) => font.calculate_size_of_text(text, params),
+            InternalFontTypes::Builtin(builtin) => builtin.calculate_size_of_text(text, params),
+        }
+    }
+    fn calculate_height_of_text(&self, text: &str, params: FontRenderSizeParams) -> Pt {
+        match self {
+            InternalFontTypes::External(font) => font.calculate_height_of_text(text, params),
+            InternalFontTypes::Builtin(builtin) => builtin.calculate_height_of_text(text, params),
+        }
+    }
+    fn size_of_char(&self, c: char, params: FontRenderSizeParams) -> Option<Size> {
+        match self {
+            InternalFontTypes::External(font) => font.size_of_char(c, params),
+            InternalFontTypes::Builtin(builtin) => builtin.size_of_char(c, params),
+        }
+    }
+    fn encode_text(&self, text: String) -> Vec<u8> {
+        match self {
+            InternalFontTypes::External(font) => font.encode_text(text),
+            InternalFontTypes::Builtin(builtin) => builtin.encode_text(text),
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedFont {
     pub(crate) font: DynFontTypes,
     pub(crate) font_name: String,
     // TODO
 }
-impl ParsedFont {
-    pub fn calculate_size_of_text(&self, text: &str, font_size: Pt) -> Size {
+impl InternalFontType for ParsedFont {
+    fn calculate_size_of_text(&self, text: &str, params: FontRenderSizeParams) -> Size {
         let mut width = Pt::default();
         let mut height = f32::default();
         for c in text.chars() {
             if let Some(glyph_id) = self.get_glyph_id(c) {
                 if let Some(metrics) = self.font.glyph_metrics(glyph_id) {
                     let (glyph_width, glyph_height) =
-                        metrics.glyph_size_in_points(self.font.units_per_em(), font_size);
+                        metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size);
                     width += glyph_width;
                     height = height.max(glyph_height.0);
                 }
@@ -273,6 +252,28 @@ impl ParsedFont {
             height: height.pt(),
         }
     }
+    fn size_of_char(&self, c: char, params: FontRenderSizeParams) -> Option<Size> {
+        if let Some(glyph_id) = self.get_glyph_id(c) {
+            if let Some(metrics) = self.font.glyph_metrics(glyph_id) {
+                let (glyph_width, glyph_height) =
+                    metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size);
+                return Some(Size {
+                    width: glyph_width,
+                    height: glyph_height,
+                });
+            }
+        }
+        None
+    }
+
+    fn encode_text(&self, text: String) -> Vec<u8> {
+        text.chars()
+            .filter_map(|char| self.get_glyph_id(char))
+            .flat_map(|glyph_id| vec![(glyph_id >> 8) as u8, (glyph_id & 255) as u8])
+            .collect()
+    }
+}
+impl ParsedFont {
     pub fn dictionary(&self, doc: &mut DocumentWriter) -> Dictionary {
         let bytes = self.font.font_bytes().to_vec();
         let font_stream = Stream::new(
@@ -437,9 +438,7 @@ impl ParsedFont {
         font_primary.into_dictionary()
     }
     pub fn get_glyph_id(&self, c: char) -> Option<u16> {
-        match &self.font {
-            DynFontTypes::TtfParser(face) => face.glyph_id(c),
-        }
+        self.font.glyph_id(c)
     }
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -455,7 +454,6 @@ impl FontRef {
         FontRef::Builtin(BuiltinFont::Helvetica)
     }
 }
-
 impl FontRef {
     pub fn id(&self) -> &str {
         match self {
@@ -549,4 +547,10 @@ pub(crate) mod font_tests {
                 .finish()
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BuiltinOrExsternalFont<'font> {
+    Builtin(BuiltinFont),
+    External(&'font ParsedFont),
 }

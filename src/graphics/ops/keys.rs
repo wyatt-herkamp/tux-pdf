@@ -1,7 +1,4 @@
-use lopdf::{
-    content::{Content, Operation},
-    Object,
-};
+use lopdf::{content::Operation, Object};
 
 macro_rules! operation_keys {
     (
@@ -34,6 +31,9 @@ operation_keys!(
     TextFont => "Tf",
     /// Text Position
     TextPosition => "Td",
+    CharacterSpace => "Tc",
+    WordSpace => "Tw",
+    TextRise => "Ts",
     /// Text New Line
     TextNewLine => "T*",
     /// End Text

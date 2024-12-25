@@ -1,11 +1,12 @@
 use crate::{
     graphics::{
         color::{Color, BLACK_RGB, GRAY_RGB},
-        layouts::grid::{GridStyleGroup, GridStyles},
+        layouts::grid::{GridColumnMaxWidth, GridColumnMinWidth, GridStyleGroup},
         styles::Padding,
-        LineStyles, PartialOrFullTextStyle, TextStyle,
+        PartialOrFullTextStyle, TextStyle,
     },
     units::{Pt, UnitType},
+    utils::Merge,
 };
 /// A cell is where the area where the row and column intersect
 ///
@@ -17,6 +18,15 @@ pub struct CellStyle {
     pub border_color: Option<Color>,
     pub border_width: Option<Pt>,
 }
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ColumnStyle {
+    /// Will set the maximum width of the column
+    pub max_width: Option<GridColumnMaxWidth>,
+    /// Will set the minimum width of the column
+    pub min_width: Option<GridColumnMinWidth>,
+    /// Cell Styling Options
+    pub cell_styles: Option<CellStyle>,
+}
 /// Row Styles are the styles that are applied to the entire row
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct RowStyles {
@@ -24,6 +34,15 @@ pub struct RowStyles {
     pub background_color: Option<Color>,
     pub border_color: Option<Color>,
     pub border_width: Option<Pt>,
+}
+impl From<RowStyles> for GridStyleGroup {
+    fn from(row_styles: RowStyles) -> Self {
+        Self {
+            border_color: row_styles.border_color,
+            border_width: row_styles.border_width,
+            background_color: row_styles.background_color,
+        }
+    }
 }
 impl From<&RowStyles> for GridStyleGroup {
     fn from(row_styles: &RowStyles) -> Self {
@@ -34,85 +53,61 @@ impl From<&RowStyles> for GridStyleGroup {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct AlternatingRowStyles {
-    pub even_row_styles: RowStyles,
-    pub odd_row_styles: RowStyles,
-}
-impl AlternatingRowStyles {
-    pub fn row_for_index(&self, index: usize) -> &RowStyles {
-        if index % 2 == 0 {
-            &self.even_row_styles
-        } else {
-            &self.odd_row_styles
+impl Merge for RowStyles {
+    fn merge(&mut self, other: Self) {
+        if let Some(other) = other.text_style {
+            self.text_style = Some(other);
+        }
+        if let Some(other) = other.background_color {
+            self.background_color = Some(other);
+        }
+        if let Some(other) = other.border_color {
+            self.border_color = Some(other);
+        }
+        if let Some(other) = other.border_width {
+            self.border_width = Some(other);
         }
     }
 }
-#[derive(Debug, Clone, PartialEq)]
-pub enum TableRowColoring {
-    Alternating {
-        alternating_styles: Box<AlternatingRowStyles>,
-    },
-    Single {
-        row_style: Box<RowStyles>,
-    },
-}
-impl Default for TableRowColoring {
-    fn default() -> Self {
-        Self::Single {
-            row_style: Box::new(RowStyles {
-                border_width: Some(1f32.pt()),
-                border_color: Some(BLACK_RGB),
-                background_color: Some(GRAY_RGB),
-                ..Default::default()
-            }),
+impl Merge<RowStyles> for GridStyleGroup {
+    fn merge(&mut self, other: RowStyles) {
+        if let Some(other) = other.background_color {
+            self.background_color = Some(other);
+        }
+        if let Some(other) = other.border_color {
+            self.border_color = Some(other);
+        }
+        if let Some(other) = other.border_width {
+            self.border_width = Some(other);
         }
     }
-}
-impl From<RowStyles> for TableRowColoring {
-    fn from(row_style: RowStyles) -> Self {
-        Self::Single {
-            row_style: Box::new(row_style),
-        }
-    }
-}
-impl From<AlternatingRowStyles> for TableRowColoring {
-    fn from(alternating_styles: AlternatingRowStyles) -> Self {
-        Self::Alternating {
-            alternating_styles: Box::new(alternating_styles),
-        }
-    }
-}
-impl From<(RowStyles, RowStyles)> for TableRowColoring {
-    fn from((even_row_styles, odd_row_styles): (RowStyles, RowStyles)) -> Self {
-        Self::Alternating {
-            alternating_styles: Box::new(AlternatingRowStyles {
-                even_row_styles,
-                odd_row_styles,
-            }),
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq)]
-pub struct ColumnStyles {
-    pub column_line_color: Option<Color>,
-    pub column_line_width: Option<Pt>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableStyles {
     /// Overrides for styles for the header
     pub header_styles: Option<RowStyles>,
+    /// Base Text Styles
+    ///
+    /// Any overrides will inherit from this
     pub text_styles: TextStyle,
-    pub grid_styles: GridStyles,
     /// If less than what is required it will be ignored.
-    ///  This is used if you want to have extra space
+    /// This is used if you want to have extra space
     pub min_row_height: Option<Pt>,
-
-    pub row_colors: TableRowColoring,
-
-    pub column_styles: Option<ColumnStyles>,
-
+    /// The padding around the cell content
+    ///
+    /// Recommended to be at least 5pt in all directions
+    pub cell_content_padding: Padding,
+    /// The outermost object styles.
+    /// So the lines around the table
+    pub outer_styles: Option<GridStyleGroup>,
+    /// The styles for the cells
+    ///
+    /// If None then no extra styles will be applied to each cell
+    pub cell_styles: Option<GridStyleGroup>,
+    /// Base Row Styles. Any overrides will inherit from this
+    pub row_styles: GridStyleGroup,
+    /// If true then the header will be repeated on a new page
     pub repeat_header_on_new_page: bool,
 }
 impl Default for TableStyles {
@@ -120,19 +115,20 @@ impl Default for TableStyles {
         Self {
             header_styles: None,
             text_styles: Default::default(),
-            grid_styles: GridStyles {
-                cell_content_padding: Padding::all(5f32.pt()),
-                outer_styles: Some(GridStyleGroup {
-                    border_color: Some(BLACK_RGB),
-                    border_width: Some(1f32.pt()),
-                    ..Default::default()
-                }),
+            cell_content_padding: Padding::all(5f32.pt()),
+            outer_styles: Some(GridStyleGroup {
+                border_color: Some(BLACK_RGB),
+                border_width: Some(1f32.pt()),
                 ..Default::default()
+            }),
+            row_styles: GridStyleGroup {
+                background_color: Some(GRAY_RGB),
+                border_color: Some(BLACK_RGB),
+                border_width: Some(1f32.pt()),
             },
+            repeat_header_on_new_page: true,
+            cell_styles: None,
             min_row_height: None,
-            row_colors: Default::default(),
-            column_styles: None,
-            repeat_header_on_new_page: false,
         }
     }
 }

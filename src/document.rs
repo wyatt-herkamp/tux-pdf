@@ -2,8 +2,6 @@ pub mod conformance;
 mod meta;
 mod resources;
 
-use std::io::Read;
-
 use crate::{
     graphics::{OperationWriter, PdfOperation, PdfOperationType},
     page::PdfPage,
@@ -24,6 +22,16 @@ pub struct PdfDocument {
     /// Page contents
     pages: Vec<PdfPage>,
 }
+impl AsRef<PdfResources> for PdfDocument {
+    fn as_ref(&self) -> &PdfResources {
+        &self.resources
+    }
+}
+impl AsRef<PdfFontMap> for PdfDocument {
+    fn as_ref(&self) -> &PdfFontMap {
+        &self.resources.fonts
+    }
+}
 impl PdfDocument {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
@@ -39,16 +47,10 @@ impl PdfDocument {
             pages: Vec::new(),
         }
     }
-    pub fn add_builtin_font(&mut self, font: BuiltinFont) -> FontRef {
-        self.resources.fonts.register_builtin_font(font);
-        FontRef::Builtin(font)
+    pub fn font_map(&mut self) -> &mut PdfFontMap {
+        &mut self.resources.fonts
     }
-    pub fn load_external_font<R>(&mut self, path: R) -> TuxPdfResult<FontRef>
-    where
-        R: Read,
-    {
-        self.resources.fonts.parse_font(path)
-    }
+
     pub fn write_to_lopdf_document(self) -> TuxPdfResult<lopdf::Document> {
         let mut writer = DocumentWriter::default();
 
@@ -56,7 +58,7 @@ impl PdfDocument {
         writer.fonts(fonts);
 
         for page in self.pages {
-            let content = operations_to_content(&self.resources, &page.ops);
+            let content = operations_to_content(&self.resources, page.ops);
             let content_id =
                 writer.insert_object(Stream::new(dictionary! {}, content.encode().unwrap()).into());
 
@@ -82,7 +84,7 @@ impl PdfDocument {
     }
 }
 
-fn operations_to_content(resources: &PdfResources, operations: &[PdfOperation]) -> Content {
+fn operations_to_content(resources: &PdfResources, operations: Vec<PdfOperation>) -> Content {
     let mut writer = OperationWriter::default();
     for operation in operations {
         operation.write(resources, &mut writer).unwrap();

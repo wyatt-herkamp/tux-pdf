@@ -1,24 +1,21 @@
 mod group;
 pub use group::*;
-pub mod high;
 mod ops;
+pub mod shapes;
 mod style;
 use std::{
-    borrow::Cow,
     fmt::Debug,
-    marker::PhantomData,
     ops::{Add, Sub},
 };
 pub use style::*;
 pub mod styles;
-use color::{Color, ColorWriter};
 use lopdf::Object;
 pub use ops::*;
 pub mod color;
 pub mod layouts;
 pub mod size;
 pub mod table;
-use crate::{document::FontRef, units::Pt};
+use crate::units::Pt;
 mod line;
 pub mod text;
 pub use line::*;

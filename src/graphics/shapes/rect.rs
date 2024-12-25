@@ -85,7 +85,7 @@ impl PaintedRect {
 
 impl PdfOperationType for PaintedRect {
     fn write(
-        &self,
+        self,
         _: &crate::document::PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
@@ -134,7 +134,7 @@ pub struct OutlineRect<U = Pt> {
 }
 impl PdfOperationType for OutlineRect {
     fn write(
-        &self,
+        self,
         resources: &crate::document::PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {

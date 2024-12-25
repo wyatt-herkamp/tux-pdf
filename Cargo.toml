@@ -24,10 +24,13 @@ either = "1"
 derive_builder = "0.20"
 tracing = { version = "0.1" }
 derive_more = { version = "1", features = ["from"] }
+
+ahash = "0.8"
 [dev-dependencies]
 anyhow = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-
+clap = { version = "4", features = ["derive"] }
+csv = "1"
 [features]
 default = ["svg", "image"]
 svg = ["resvg"]

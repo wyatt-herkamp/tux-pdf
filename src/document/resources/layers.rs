@@ -48,7 +48,6 @@ impl Layer {
     pub fn set_usage(&mut self, usage: LayerSubtype) {
         self.usage = usage;
     }
-
 }
 #[derive(Debug, PartialEq, Clone, Default)]
 pub enum LayerSubtype {

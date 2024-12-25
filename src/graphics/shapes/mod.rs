@@ -4,6 +4,4 @@ pub use rect::*;
 
 pub struct Triangle {}
 
-
-
 pub struct Circle {}

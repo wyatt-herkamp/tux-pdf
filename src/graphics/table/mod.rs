@@ -14,7 +14,7 @@ use super::{
     layouts::grid::{GridLayout, GridStyleGroup},
     size::{SimpleRenderSize, Size},
     styles::Margin,
-    Text, TextStyle,
+    TextBlock, TextStyle,
 };
 use crate::graphics::layouts::grid::{
     GridColumnRules, GridLayoutBuilder, GridStyles, NewGridColumm,
@@ -39,6 +39,9 @@ pub enum TableError {
     GridBuilderColumnsNotInitialized,
     #[error("A Grid can only have at max 1 autofill columns")]
     MultipleAutoFillColumns,
+
+    #[error("Table is not allowed to create more pages")]
+    NoNewPageAllowed,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,32 +62,32 @@ impl Default for TablePageRules {
         }
     }
 }
-pub type NewPageFn = fn(document: &mut PdfDocument) -> (TablePageRules, PdfPage);
-/// Default new page function
-fn default_new_page(_: &mut PdfDocument) -> (TablePageRules, PdfPage) {
-    let page = PdfPage::new_from_page_size(A4);
-    (Default::default(), page)
+pub type NewPageFn =
+    fn(document: &mut PdfDocument) -> Result<(TablePageRules, PdfPage), TuxPdfError>;
+
+pub fn no_new_page_allowed(_: &mut PdfDocument) -> Result<(TablePageRules, PdfPage), TuxPdfError> {
+    Err(TableError::NoNewPageAllowed.into())
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Table<'table> {
-    pub columns: Vec<Column<'table>>,
+pub struct Table {
+    pub columns: Vec<Column>,
     pub rows: Vec<Row>,
     pub styles: TableStyles,
     pub new_page: NewPageFn,
 }
-impl Default for Table<'_> {
+impl Default for Table {
     fn default() -> Self {
         Self {
             columns: Default::default(),
             rows: Default::default(),
             styles: Default::default(),
-            new_page: default_new_page,
+            new_page: no_new_page_allowed,
         }
     }
 }
-impl<'table> Table<'table> {
-    pub fn add_column(&mut self, column: Column<'table>) {
+impl Table {
+    pub fn add_column(&mut self, column: Column) {
         self.columns.push(column);
     }
     pub fn add_row(&mut self, row: Row) {
@@ -112,7 +115,6 @@ impl<'table> Table<'table> {
     }
 
     fn header_text_styles(&self) -> Cow<'_, TextStyle> {
-        // TODO: Merge styles
         if let Some(header_text_style) = self
             .styles
             .header_styles
@@ -134,8 +136,8 @@ impl<'table> Table<'table> {
             .map(|column| {
                 let size = column.header.render_size(document, style.as_ref())?;
                 let rules = GridColumnRules {
-                    min_width: column.min_width,
-                    ..Default::default()
+                    min_width: column.styles.as_ref().and_then(|s| s.min_width),
+                    max_width: column.styles.as_ref().and_then(|s| s.max_width),
                 };
                 Ok(NewGridColumm {
                     initial_size: size,
@@ -144,14 +146,7 @@ impl<'table> Table<'table> {
             })
             .collect()
     }
-    fn get_base_grid_row_styles_for_index(&self, index: usize) -> GridStyleGroup {
-        match &self.styles.row_colors {
-            TableRowColoring::Alternating { alternating_styles } => {
-                alternating_styles.row_for_index(index).into()
-            }
-            TableRowColoring::Single { row_style } => row_style.as_ref().into(),
-        }
-    }
+
     fn build_pages(
         &mut self,
         document: &mut PdfDocument,
@@ -159,29 +154,38 @@ impl<'table> Table<'table> {
     ) -> Result<Vec<InternalTablePage>, TuxPdfError> {
         let mut pages = Vec::with_capacity(1);
         let mut page = first_page.1;
-        // Initialize the first grid builder
-        let (columns, header_row_grid_styles) = {
-            let column_sizes = self.size_of_header_columns(document)?;
-            let mut header_row_styles = self.get_base_grid_row_styles_for_index(0);
-            header_row_styles
-                .merge_with_option(self.styles.header_styles.as_ref().map(|s| s.into()));
-            (column_sizes, Some(header_row_styles))
+        let header_row_as_column_group: Option<GridStyleGroup> =
+            self.styles.header_styles.as_ref().map(|s| s.into());
+        let header_row_styles = self
+            .styles
+            .row_styles
+            .merge_with_option_into_new(header_row_as_column_group);
+        let grid_styles = GridStyles {
+            cell_content_padding: self.styles.cell_content_padding,
+            outer_styles: self.styles.outer_styles.clone(),
+            row_styles: None,
+            cell_styles: self.styles.cell_styles.clone(),
         };
+        // Initialize the first grid builder
+        let column_sizes = self.size_of_header_columns(document)?;
 
         let mut grid_builder = GridLayoutBuilder::new(
             &first_page.0,
-            self.styles.grid_styles.clone(),
-            columns,
-            header_row_grid_styles,
+            grid_styles.clone(),
+            column_sizes,
+            Some(header_row_styles.clone()),
         )?;
 
         info!(?grid_builder);
         let mut rows = Vec::with_capacity(5);
 
-        for (index, row) in mem::take(&mut self.rows).into_iter().enumerate() {
+        for row in mem::take(&mut self.rows).into_iter() {
             let column_sizes = row.calculate_sizes(document, &self.styles.text_styles)?;
-            let mut grid_styling: GridStyleGroup = self.get_base_grid_row_styles_for_index(index);
-            grid_styling.merge_with_option(row.styles.as_ref().map(|s| s.into()));
+            let grid_styling: GridStyleGroup = self
+                .styles
+                .row_styles
+                .merge_with_option_into_new(row.grid_row_styles());
+
             debug!(?grid_styling, "Row Styling");
 
             if !grid_builder.next_row(&column_sizes, Some(grid_styling))? {
@@ -190,20 +194,15 @@ impl<'table> Table<'table> {
                     rows: mem::take(&mut rows),
                     grid_layout: grid_builder.build(),
                 });
-                let (page_rules, new_page) = (self.new_page)(document);
+                let (page_rules, new_page) = (self.new_page)(document)?;
 
-                let (columns, header_row_grid_styles) = {
-                    let column_sizes = self.size_of_header_columns(document)?;
-                    let mut header_row_styles = self.get_base_grid_row_styles_for_index(0);
-                    header_row_styles
-                        .merge_with_option(self.styles.header_styles.as_ref().map(|s| s.into()));
-                    (column_sizes, Some(header_row_styles))
-                };
+                let column_sizes = self.size_of_header_columns(document)?;
+
                 grid_builder = GridLayoutBuilder::new(
                     &page_rules,
-                    self.styles.grid_styles.clone(),
-                    columns,
-                    header_row_grid_styles,
+                    grid_styles.clone(),
+                    column_sizes,
+                    Some(header_row_styles.clone()),
                 )?;
                 page = new_page;
             }
@@ -247,13 +246,10 @@ impl<'table> Table<'table> {
                     self.columns
                         .iter()
                         .zip(header_row_locations)
-                        .map(|(column, location)| {
-                            let value = Cow::Owned(column.header.clone().into_owned());
-                            Text {
-                                value,
-                                position: location,
-                                style: header_styles.clone().into_owned(),
-                            }
+                        .map(|(column, location)| TextBlock {
+                            content: column.header.clone().into(),
+                            position: location,
+                            style: header_styles.clone().into_owned(),
                         })
                 {
                     page.add_operation(text.into());
@@ -271,10 +267,8 @@ impl<'table> Table<'table> {
                     #[allow(clippy::single_match)]
                     match column.value {
                         TableValue::Text(value) => {
-                            let value = Cow::Owned(value);
-
-                            let text = Text {
-                                value,
+                            let text = TextBlock {
+                                content: value.into(),
                                 position: location,
                                 style: row_text_style.clone(),
                             };

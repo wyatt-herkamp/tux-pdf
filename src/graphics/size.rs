@@ -1,12 +1,16 @@
-use std::{borrow::Cow, fmt::Debug, ops::Sub, process::Output};
-
-use crate::{
-    document::FontRef,
-    graphics::{Point, TextStyle},
-    units::{Mm, Pt, UnitType},
+use std::{
+    borrow::Cow,
+    fmt::Debug,
+    ops::{Add, AddAssign, Sub},
 };
 
-use super::high::OutlineRect;
+use crate::{
+    document::{FontRef, FontRenderSizeParams, InternalFontType},
+    graphics::{Point, TextStyle},
+    units::Pt,
+};
+
+use super::shapes::OutlineRect;
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Size<U = Pt> {
@@ -18,7 +22,24 @@ impl<U> From<Size<U>> for (U, U) {
         (size.width, size.height)
     }
 }
-
+impl<U> Add<Size<U>> for Size<U>
+where
+    U: Add<Output = U>,
+{
+    type Output = Size<U>;
+    fn add(self, other: Size<U>) -> Size<U> {
+        Size::new(self.width + other.width, self.height + other.height)
+    }
+}
+impl<U> AddAssign<Size<U>> for Size<U>
+where
+    U: AddAssign,
+{
+    fn add_assign(&mut self, other: Size<U>) {
+        self.width += other.width;
+        self.height += other.height;
+    }
+}
 impl<U> Sub<Size<U>> for Size<U>
 where
     U: Sub<Output = U>,
@@ -118,6 +139,7 @@ impl SimpleRenderSize for &str {
     ) -> Result<Size, crate::TuxPdfError> {
         let font = &settings.font_ref;
         let font_size = settings.font_size;
+        let font_options = FontRenderSizeParams { font_size };
         match font {
             FontRef::External(font_id) => {
                 let font = document
@@ -125,10 +147,10 @@ impl SimpleRenderSize for &str {
                     .fonts
                     .get_external_font(font_id)
                     .ok_or_else(|| crate::TuxPdfError::FontNotRegistered(font_id.clone()))?;
-                Ok(font.calculate_size_of_text(self.as_ref(), font_size))
+                Ok(font.calculate_size_of_text(self.as_ref(), font_options))
             }
             FontRef::Builtin(builtin_font) => {
-                Ok(builtin_font.calculate_size_of_text(self.as_ref(), font_size))
+                Ok(builtin_font.calculate_size_of_text(self.as_ref(), font_options))
             }
         }
     }

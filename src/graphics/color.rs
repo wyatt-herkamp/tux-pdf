@@ -1,3 +1,4 @@
+use derive_more::derive::From;
 use lopdf::Object;
 
 use crate::document::IccProfileId;
@@ -27,7 +28,7 @@ default_rgb_colors! {
     WHITE_RGB = 1.0, 1.0, 1.0;
     GRAY_RGB = 0.5, 0.5, 0.5;
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, From)]
 pub enum Color {
     Rgb(Rgb),
     Cmyk(Cmyk),
@@ -46,7 +47,7 @@ pub struct ColorWriter<'style> {
 
 impl PdfOperationType for ColorWriter<'_> {
     fn write(
-        &self,
+        self,
         _: &crate::document::PdfResources,
         writer: &mut super::OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
@@ -69,26 +70,7 @@ impl PdfOperationType for ColorWriter<'_> {
         Ok(())
     }
 }
-impl From<Rgb> for Color {
-    fn from(rgb: Rgb) -> Self {
-        Color::Rgb(rgb)
-    }
-}
-impl From<Cmyk> for Color {
-    fn from(cmyk: Cmyk) -> Self {
-        Color::Cmyk(cmyk)
-    }
-}
-impl From<SpotColor> for Color {
-    fn from(spot_color: SpotColor) -> Self {
-        Color::SpotColor(spot_color)
-    }
-}
-impl From<Greyscale> for Color {
-    fn from(greyscale: Greyscale) -> Self {
-        Color::Greyscale(greyscale)
-    }
-}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Rgb {
     pub r: f32,

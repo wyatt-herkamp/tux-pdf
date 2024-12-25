@@ -7,7 +7,7 @@ use crate::{
 
 use super::{
     color::{Color, ColorWriter},
-    high::RectangleStyleType,
+    shapes::RectangleStyleType,
     OperationKeys, OperationWriter, PdfOperation, PdfOperationType,
 };
 
@@ -33,7 +33,7 @@ impl From<GraphicStyles> for PdfOperation {
 
 impl PdfOperationType for GraphicStyles {
     fn write(
-        &self,
+        self,
         resources: &crate::document::PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
@@ -62,7 +62,7 @@ impl IsEmpty for PartialGraphicStyles {
 }
 impl PdfOperationType for PartialGraphicStyles {
     fn write(
-        &self,
+        self,
         resources: &crate::document::PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {

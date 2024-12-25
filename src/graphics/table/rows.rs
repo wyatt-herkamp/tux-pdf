@@ -3,36 +3,58 @@ use std::borrow::Cow;
 use crate::{
     document::PdfDocument,
     graphics::{
-        layouts::grid::GridColumnMinWidth,
+        layouts::grid::{GridColumnMinWidth, GridStyleGroup},
         size::{SimpleRenderSize, Size},
         TextStyle,
     },
 };
 
-use super::{CellStyle, RowStyles};
+use super::{CellStyle, ColumnStyle, RowStyles};
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Column<'column> {
-    pub header: Cow<'column, str>,
-    /// The minimum width of the column
-    pub min_width: Option<GridColumnMinWidth>,
-    pub styles: Option<CellStyle>,
+pub struct Column {
+    pub header: String,
+    pub styles: Option<ColumnStyle>,
 }
-impl Column<'_> {
-    pub fn with_styles(mut self, styles: CellStyle) -> Self {
-        self.styles = Some(styles);
+impl Column {
+    pub fn with_cell_styles(mut self, styles: CellStyle) -> Self {
+        if let Some(column_styles) = self.styles.as_mut() {
+            column_styles.cell_styles = Some(styles);
+        } else {
+            self.styles = Some(ColumnStyle {
+                cell_styles: Some(styles),
+                ..Default::default()
+            });
+        }
+
         self
     }
+
     pub fn with_min_width(mut self, min_width: GridColumnMinWidth) -> Self {
-        self.min_width = Some(min_width);
+        if let Some(column_styles) = self.styles.as_mut() {
+            column_styles.min_width = Some(min_width);
+        } else {
+            self.styles = Some(ColumnStyle {
+                min_width: Some(min_width),
+                ..Default::default()
+            });
+        }
         self
     }
 }
 
-impl<'column> From<&'column str> for Column<'column> {
-    fn from(header: &'column str) -> Self {
+impl From<&str> for Column {
+    fn from(header: &str) -> Self {
         Self {
-            header: Cow::Borrowed(header),
+            header: header.to_owned(),
+            ..Default::default()
+        }
+    }
+}
+impl From<String> for Column {
+    fn from(header: String) -> Self {
+        Self {
+            header,
             ..Default::default()
         }
     }
@@ -63,17 +85,19 @@ impl From<()> for TableValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Row {
     pub values: Vec<TableValueWithStyle>,
     /// Override the default styles for this row
     pub styles: Option<RowStyles>,
 }
 impl Row {
+    /// Adds styles to the row
     pub fn with_styles(mut self, styles: RowStyles) -> Self {
         self.styles = Some(styles);
         self
     }
+    /// Get the number of columns in the row
     pub fn number_of_columns(&self) -> usize {
         self.values.len()
     }
@@ -102,6 +126,9 @@ impl Row {
                 }
             })
             .collect()
+    }
+    pub(crate) fn grid_row_styles(&self) -> Option<GridStyleGroup> {
+        self.styles.as_ref().map(|styles| styles.into())
     }
 }
 impl<T> From<Vec<T>> for Row

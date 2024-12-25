@@ -1,6 +1,6 @@
 use crate::{
     document::LayerInternalId,
-    graphics::{high::OutlineRect, size::Size, PdfOperation},
+    graphics::{shapes::OutlineRect, size::Size, PdfOperation},
 };
 
 pub mod page_sizes;

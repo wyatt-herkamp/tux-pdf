@@ -6,7 +6,7 @@ mod keys;
 use crate::{document::PdfResources, TuxPdfError};
 pub use keys::*;
 
-use super::{group::GraphicItems, GraphicStyles, MultiText, Text};
+use super::{group::GraphicItems, GraphicStyles, TextBlock};
 /// Operations that can occur in a PDF page
 #[derive(Debug, Clone, PartialEq)]
 pub enum PdfOperation {
@@ -14,8 +14,7 @@ pub enum PdfOperation {
     Marker {
         id: String,
     },
-    WriteText(Text<'static>),
-    MultiText(MultiText<'static>),
+    TextBlock(TextBlock),
     LineBreak,
     Graphics(GraphicItems),
     Styles(GraphicStyles),
@@ -23,7 +22,7 @@ pub enum PdfOperation {
 
 impl PdfOperationType for PdfOperation {
     fn write(
-        &self,
+        self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
@@ -43,11 +42,9 @@ impl PdfOperationType for PdfOperation {
                 );
                 writer.add_operation(OperationKeys::EndText, vec![]);
             }
-            PdfOperation::WriteText(text) => {
-                text.write(resources, writer)?;
-            }
-            PdfOperation::MultiText(multi_text) => {
-                multi_text.write(resources, writer)?;
+
+            PdfOperation::TextBlock(block) => {
+                block.write(resources, writer)?;
             }
             PdfOperation::LineBreak => {
                 writer.add_operation(
@@ -91,7 +88,7 @@ impl OperationWriter {
 
 pub trait PdfOperationType {
     fn write(
-        &self,
+        self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError>;

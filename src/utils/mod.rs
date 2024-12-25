@@ -97,7 +97,7 @@ where
     T::FullStruct: PdfOperationType,
 {
     fn write(
-        &self,
+        self,
         resources: &crate::document::PdfResources,
         writer: &mut crate::graphics::OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
@@ -117,6 +117,14 @@ pub trait Merge<Rhs = Self> {
         if let Some(other) = other {
             self.merge(other);
         }
+    }
+    fn merge_with_option_into_new(&self, other: Option<Rhs>) -> Self
+    where
+        Self: Clone,
+    {
+        let mut new = self.clone();
+        new.merge_with_option(other);
+        new
     }
 
     fn merge_into_new(&self, other: Rhs) -> Self

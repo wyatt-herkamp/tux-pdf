@@ -10,7 +10,7 @@ use lopdf::{Dictionary, Object, ObjectId, Stream};
 
 use crate::document::types::PdfDirectoryType;
 
-use super::{FontDescriptor, FontSubType};
+use super::FontSubType;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Builder)]
 pub struct CIDSystemInfo<'font> {
     pub registry: Cow<'font, str>,

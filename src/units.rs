@@ -11,11 +11,16 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::num::FpCategory;
 
-macro_rules! from_inner {
+macro_rules! basic_trait_impl {
     ($type:ident($inner:ty)) => {
         impl From<$inner> for $type {
             fn from(val: $inner) -> Self {
                 $type(val)
+            }
+        }
+        impl std::fmt::Display for $type {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.0)
             }
         }
     };
@@ -183,6 +188,16 @@ macro_rules! self_math {
         }
     };
 }
+macro_rules! negation {
+    ($type:ident) => {
+        impl std::ops::Neg for $type {
+            type Output = $type;
+            fn neg(self) -> $type {
+                $type(-self.0)
+            }
+        }
+    };
+}
 /// Scale in millimeter
 #[derive(Debug, Default, Copy, Clone, PartialOrd)]
 pub struct Mm(pub f32);
@@ -190,7 +205,8 @@ serde_transparent!(Mm(f32));
 impl_partialeq!(Mm);
 self_math!(Mm(f32));
 into_lo_object!(Mm);
-from_inner!(Mm(f32));
+basic_trait_impl!(Mm(f32));
+negation!(Mm);
 impl From<Mm> for Pt {
     fn from(mm: Mm) -> Self {
         Pt(mm.0 * 2.834_646_f32)
@@ -203,10 +219,16 @@ self_math!(Pt(f32));
 impl_partialeq!(Pt);
 serde_transparent!(Pt(f32));
 into_lo_object!(Pt);
-from_inner!(Pt(f32));
+basic_trait_impl!(Pt(f32));
+negation!(Pt);
 impl From<Pt> for Mm {
     fn from(pt: Pt) -> Self {
         Mm(pt.0 * 0.352_778_f32)
+    }
+}
+impl From<usize> for Pt {
+    fn from(val: usize) -> Self {
+        Pt(val as f32)
     }
 }
 /// Scale in pixels
@@ -215,7 +237,7 @@ pub struct Px(pub i64);
 self_math!(Px(i64));
 serde_transparent!(Px(i64));
 into_lo_object!(Px);
-from_inner!(Px(i64));
+basic_trait_impl!(Px(i64));
 
 pub trait UnitType {
     fn mm(&self) -> Mm;

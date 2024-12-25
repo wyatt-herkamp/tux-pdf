@@ -1,16 +1,14 @@
+use derive_more::derive::From;
+
 use crate::{
     graphics::{
-        color::Color,
-        high::{RectangleStyle, RectangleStyleType},
-        size::Size,
-        styles::Padding,
-        GraphicStyles,
+        color::Color, shapes::RectangleStyleType, size::Size, styles::Padding, GraphicStyles,
     },
     units::Pt,
     utils::{IsEmpty, Merge},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, From)]
 pub enum GridColumnMinWidth {
     /// The column width is fixed and will not be recalculated
     Fixed(Pt),
@@ -22,10 +20,17 @@ pub enum GridColumnMinWidth {
     /// You are limited to one column with this setting
     AutoFill,
 }
+#[derive(Debug, Clone, Copy, PartialEq, From)]
+pub enum GridColumnMaxWidth {
+    /// The column width is fixed and will not be recalculated
+    Fixed(Pt),
+    /// The column width is a percentage of the total width
+    Percentage(f32),
+}
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GridColumnRules {
     pub min_width: Option<GridColumnMinWidth>,
-    pub max_width: Option<Pt>,
+    pub max_width: Option<GridColumnMaxWidth>,
 }
 /// A column in the table
 #[derive(Debug, Clone, PartialEq, Default)]

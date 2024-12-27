@@ -16,6 +16,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridLayoutBuilder {
     current_y: Pt,
+    next_y: Pt,
     current_x: Pt,
     start: Point,
     max_grid_size: Size,
@@ -55,6 +56,7 @@ impl GridLayoutBuilder {
 
         let mut builder = Self {
             current_y: starting_y,
+            next_y: starting_y,
             current_x: left,
             start: Point {
                 x: left,
@@ -73,6 +75,13 @@ impl GridLayoutBuilder {
         debug!(?builder, "Columns initialized");
 
         Ok(builder)
+    }
+
+    pub fn available_size(&self) -> Size {
+        Size::new(
+            self.max_grid_size.width,
+            self.current_y - self.max_grid_size.height,
+        )
     }
     /// Calculates the initial columns widths and x positions
     fn initialize_columns(&mut self, columns: Vec<NewGridColumm>) -> Result<bool, TableError> {
@@ -216,6 +225,12 @@ impl GridLayoutBuilder {
             return Ok(false);
         }
         self.current_y = next_y;
+        let y_starting_point = if self.rows.is_empty() {
+            self.current_y
+        } else {
+            let last_row = self.rows.last().unwrap();
+            last_row.content_start_y - last_row.height
+        };
 
         self.recaclulate_columns(column_sizes)?;
 
@@ -226,6 +241,7 @@ impl GridLayoutBuilder {
                     .cell_content_padding
                     .vertical_value()
                     .unwrap_or_default(),
+            content_start_y: y_starting_point,
             height: row_height,
             styles: style,
         });
@@ -341,7 +357,7 @@ impl GridLayoutBuilder {
             .rows
             .into_iter()
             .map(|row| GridRow {
-                content_y: row.y - top_padding,
+                content_y: row.content_start_y + top_padding,
                 border_line_y: row.y - vertical_padding,
                 height: row.height,
                 styles: row.styles,

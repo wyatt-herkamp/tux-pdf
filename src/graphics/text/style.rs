@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 mod modifiers;
 use crate::{
-    document::{FontRef, PdfResources},
+    document::{BuiltinFont, FontRef, FontRenderSizeParams, PdfResources},
     graphics::{
-        color::{Color, ColorWriter},
-        OperationKeys, OperationWriter, PdfOperationType,
+        color::{Color, ColorWriter, HasColorParams},
+        OperationWriter, PdfOperationType,
     },
     units::Pt,
     utils::{IsEmpty, PartailOrFull, PartialStruct},
@@ -12,28 +12,133 @@ use crate::{
 };
 pub use modifiers::*;
 
+use super::TextOperations;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct TextStyle {
+    /// The size of the font
+    ///
+    /// Default is 12.0
     pub font_size: Pt,
+    /// The font reference
+    ///
+    /// Defaults to Helvetica. Note. That you need to register the font with the pdf resources even if its built in.
     pub font_ref: FontRef,
     /// Defaults to previously set color or black
     pub fill_color: Option<Color>,
     pub outline_color: Option<Color>,
+    /// Space between characters
+    ///
+    /// See [TextOperations::CharacterSpace] for more information
+    pub character_spacing: Option<Pt>,
+    /// Space between words
+    ///
+    /// See [TextOperations::WordSpace] for more information
     pub word_spacing: Option<Pt>,
+    /// Uses to create superscript or subscript text
+    ///
+    /// See [TextOperations::TextRise] for more information
+    pub text_rise: Option<Pt>,
+
+    /// Space between lines
+    ///
+    /// ## Note
+    /// This is not a pdf feature.
+    ///
+    /// Where when multiple lines in one text block are rendered, this is the space between them.
     pub line_spacing: Option<Pt>,
+    /// Maximum width of text block
+    ///
+    /// ## Note
+    ///
+    /// This is not a pdf feature. This is a feature of this library where it attempts to wrap text.
+    /// This is a work in progress and may not work as expected.
+    ///
+    /// ### What about max height?
+    ///
+    /// I do not see a use case for this currently. If you have one please open an issue.
+    ///
+    /// But the main use case for this is to put text in a a table cell.
     pub max_width: Option<Pt>,
+}
+impl HasColorParams for TextStyle {
+    fn set_fill_color(&mut self, color: Color) {
+        self.fill_color = Some(color);
+    }
+
+    fn set_outline_color(&mut self, color: Color) {
+        self.outline_color = Some(color);
+    }
+
+    fn take_fill_color(&mut self) -> Option<Color> {
+        self.fill_color.take()
+    }
+
+    fn take_outline_color(&mut self) -> Option<Color> {
+        self.outline_color.take()
+    }
+}
+impl PdfOperationType for TextStyle {
+    fn write(
+        self,
+        resources: &PdfResources,
+        writer: &mut OperationWriter,
+    ) -> Result<(), TuxPdfError> {
+        writer.add_operation(
+            TextOperations::TextFont,
+            vec![self.font_ref.into(), self.font_size.into()],
+        );
+        if let Some(text_rise) = self.text_rise {
+            writer.add_operation(TextOperations::TextRise, vec![text_rise.into()]);
+        }
+        if let Some(character_spacing) = self.character_spacing {
+            writer.add_operation(
+                TextOperations::CharacterSpace,
+                vec![character_spacing.into()],
+            );
+        }
+        if let Some(word_spacing) = self.word_spacing {
+            writer.add_operation(TextOperations::WordSpace, vec![word_spacing.into()]);
+        }
+        let color_writer = ColorWriter {
+            outline_color: self.outline_color.map(Cow::Owned),
+            fill_color: self.fill_color.map(Cow::Owned),
+        };
+        color_writer.write(resources, writer)?;
+        Ok(())
+    }
+}
+
+impl FontRenderSizeParams for TextStyle {
+    fn font_size(&self) -> Pt {
+        self.font_size
+    }
+
+    fn character_spacing(&self) -> Option<Pt> {
+        self.character_spacing
+    }
+
+    fn word_spacing(&self) -> Option<Pt> {
+        self.word_spacing
+    }
+
+    fn text_rise(&self) -> Option<Pt> {
+        self.text_rise
+    }
 }
 
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
             font_size: Pt(12.0),
-            font_ref: FontRef::internal_default(),
+            font_ref: FontRef::Builtin(BuiltinFont::Helvetica),
             fill_color: None,
             outline_color: None,
             word_spacing: None,
             line_spacing: None,
             max_width: None,
+            character_spacing: None,
+            text_rise: None,
         }
     }
 }
@@ -90,25 +195,5 @@ impl PartialStruct for PartialTextStyle {
             new.max_width = Some(max_width);
         }
         Cow::Owned(new)
-    }
-}
-
-impl PdfOperationType for TextStyle {
-    fn write(
-        self,
-        resources: &PdfResources,
-        writer: &mut OperationWriter,
-    ) -> Result<(), TuxPdfError> {
-        writer.add_operation(
-            OperationKeys::TextFont,
-            vec![self.font_ref.into(), self.font_size.into()],
-        );
-
-        let color_writer = ColorWriter {
-            outline_color: self.outline_color.as_ref(),
-            fill_color: self.fill_color.as_ref(),
-        };
-        color_writer.write(resources, writer)?;
-        Ok(())
     }
 }

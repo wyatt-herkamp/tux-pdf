@@ -2,8 +2,8 @@ use std::ops::{Add, Sub};
 
 use crate::{
     graphics::{
-        size::Size, OperationKeys, OperationWriter, PaintMode, PdfOperationType, Point, Polygon,
-        StraightLine, WindingOrder,
+        size::Size, OperationKeys, OperationWriter, PaintMode, PathConstructionOperators,
+        PathPaintOperationKeys, PdfOperationType, Point, Polygon, StraightLine, WindingOrder,
     },
     units::{Pt, UnitType},
     utils::copy_into,
@@ -92,11 +92,11 @@ impl PdfOperationType for PaintedRect {
         let Size { width, height } = self.size;
         let Point { x, y } = self.position;
         writer.add_operation(
-            OperationKeys::PathRectangle,
+            PathConstructionOperators::PathRectangle,
             vec![x.into(), y.into(), width.into(), height.into()],
         );
         writer.add_operation(self.paint_mode.operation_key(self.winding_order), vec![]);
-        writer.add_operation(OperationKeys::PathPaintEnd, vec![]);
+        writer.add_operation(PathPaintOperationKeys::PathPaintEnd, vec![]);
 
         Ok(())
     }

@@ -6,16 +6,12 @@ mod keys;
 use crate::{document::PdfResources, TuxPdfError};
 pub use keys::*;
 
-use super::{group::GraphicItems, GraphicStyles, TextBlock};
+use super::{group::GraphicItems, GraphicStyles, TextBlock, TextOperations};
 /// Operations that can occur in a PDF page
 #[derive(Debug, Clone, PartialEq)]
 pub enum PdfOperation {
-    /// Debugging or section marker (arbitrary id can mark a certain point in a stream of operations)
-    Marker {
-        id: String,
-    },
     TextBlock(TextBlock),
-    LineBreak,
+    NewLine,
     Graphics(GraphicItems),
     Styles(GraphicStyles),
 }
@@ -27,30 +23,11 @@ impl PdfOperationType for PdfOperation {
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
         match self {
-            PdfOperation::Marker { id } => {
-                writer.add_operation(OperationKeys::BeginText, vec![]);
-                writer.add_operation(
-                    OperationKeys::TextPosition,
-                    vec![Object::Integer(0), Object::Integer(0)],
-                );
-                writer.add_operation(
-                    OperationKeys::ShowText,
-                    vec![Object::String(
-                        id.as_bytes().to_vec(),
-                        lopdf::StringFormat::Hexadecimal,
-                    )],
-                );
-                writer.add_operation(OperationKeys::EndText, vec![]);
-            }
-
             PdfOperation::TextBlock(block) => {
                 block.write(resources, writer)?;
             }
-            PdfOperation::LineBreak => {
-                writer.add_operation(
-                    OperationKeys::TextPosition,
-                    vec![Object::Integer(0), Object::Integer(-1)],
-                );
+            PdfOperation::NewLine => {
+                writer.add_operation(TextOperations::TextNewLine, vec![]);
             }
             PdfOperation::Graphics(graphic) => {
                 graphic.write(resources, writer)?;
@@ -75,11 +52,11 @@ impl From<OperationWriter> for Content {
     }
 }
 impl OperationWriter {
-    pub fn add_operation(&mut self, operation: OperationKeys, operands: Vec<Object>) {
-        self.operations.push(operation.lo_pdf_operation(operands));
+    pub fn add_operation(&mut self, operation: impl OperationKeyType, operands: Vec<Object>) {
+        self.operations.push(operation.to_operation(operands));
     }
-    pub fn push_empty_op(&mut self, operation: OperationKeys) {
-        self.operations.push(operation.lo_pdf_operation(vec![]));
+    pub fn push_empty_op(&mut self, operation: impl OperationKeyType) {
+        self.operations.push(operation.no_operand());
     }
     pub fn operations(self) -> Vec<Operation> {
         self.operations

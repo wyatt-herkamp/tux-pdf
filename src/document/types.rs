@@ -4,6 +4,8 @@
 use lopdf::{dictionary, Dictionary, Object, ObjectId};
 mod font;
 pub use font::*;
+
+use super::{PageLayout, PageMode};
 pub trait PdfType {
     fn into_object(self) -> Object;
 }
@@ -61,22 +63,41 @@ impl PdfDirectoryType for PagesObject {
         dict
     }
 }
-
-#[derive(Debug, Clone, PartialEq)]
+/// Table 28 – Entries in a page object
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CatalogObject {
     /// /Pages dictionary object id
     pub pages: ObjectId,
+    //// PageLayout
+    pub page_layout: PageLayout,
+    /// PageMode
+    pub page_mode: PageMode,
+    /// Lang
+    pub language: Option<String>,
 }
 impl PdfDirectoryType for CatalogObject {
     fn dictionary_type_key() -> &'static str {
         "Catalog"
     }
     fn into_dictionary(self) -> Dictionary {
-        let CatalogObject { pages } = self;
-        dictionary! {
+        let CatalogObject {
+            pages,
+            page_layout: layout,
+            language,
+            page_mode,
+        } = self;
+        let mut catalog = dictionary! {
             "Type" => Self::dictionary_type_key(),
             "Pages" => pages,
+            "PageLayout" => layout,
+            "PageMode" => page_mode,
+        };
+
+        if let Some(language) = language {
+            catalog.set("Lang", language);
         }
+
+        catalog
     }
 }
 

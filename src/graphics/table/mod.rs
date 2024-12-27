@@ -12,7 +12,7 @@ pub use style::*;
 mod rows;
 use super::{
     layouts::grid::{GridLayout, GridStyleGroup},
-    size::{SimpleRenderSize, Size},
+    size::{RenderSize, Size},
     styles::Margin,
     TextBlock, TextStyle,
 };
@@ -146,7 +146,39 @@ impl Table {
             })
             .collect()
     }
+    fn prepare_content(
+        &mut self,
+        document: &mut PdfDocument,
+        available_size: Size,
+    ) -> Result<(), TuxPdfError> {
+        let header_text_styles: TextStyle = self.header_text_styles().into_owned();
 
+        for (column_index, column) in self.columns.iter_mut().enumerate() {
+            if let Some(max_width) = column.styles.as_ref().and_then(|s| s.max_width) {
+                let max_width = match max_width {
+                    super::layouts::grid::GridColumnMaxWidth::Fixed(pt) => pt,
+                    super::layouts::grid::GridColumnMaxWidth::Percentage(percentage) => {
+                        available_size.width * percentage
+                    }
+                };
+                column
+                    .header
+                    .apply_max_width(max_width, document, &header_text_styles)?;
+
+                for row in self.rows.iter_mut() {
+                    let value = row.values.get_mut(column_index).unwrap();
+                    #[allow(clippy::single_match)]
+                    match &mut value.value {
+                        TableValue::Text(text) => {
+                            text.apply_max_width(max_width, document, &self.styles.text_styles)?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
     fn build_pages(
         &mut self,
         document: &mut PdfDocument,
@@ -176,6 +208,7 @@ impl Table {
             Some(header_row_styles.clone()),
         )?;
 
+        self.prepare_content(document, grid_builder.available_size())?;
         info!(?grid_builder);
         let mut rows = Vec::with_capacity(5);
 
@@ -188,7 +221,7 @@ impl Table {
 
             debug!(?grid_styling, "Row Styling");
 
-            if !grid_builder.next_row(&column_sizes, Some(grid_styling))? {
+            if !grid_builder.next_row(&column_sizes, Some(grid_styling.clone()))? {
                 pages.push(InternalTablePage {
                     page,
                     rows: mem::take(&mut rows),
@@ -196,14 +229,15 @@ impl Table {
                 });
                 let (page_rules, new_page) = (self.new_page)(document)?;
 
-                let column_sizes = self.size_of_header_columns(document)?;
+                let header_column_sizes = self.size_of_header_columns(document)?;
 
                 grid_builder = GridLayoutBuilder::new(
                     &page_rules,
                     grid_styles.clone(),
-                    column_sizes,
+                    header_column_sizes,
                     Some(header_row_styles.clone()),
                 )?;
+                grid_builder.next_row(&column_sizes, Some(grid_styling))?;
                 page = new_page;
             }
             rows.push(row);
@@ -247,7 +281,7 @@ impl Table {
                         .iter()
                         .zip(header_row_locations)
                         .map(|(column, location)| TextBlock {
-                            content: column.header.clone().into(),
+                            content: column.header.clone(),
                             position: location,
                             style: header_styles.clone().into_owned(),
                         })
@@ -268,7 +302,7 @@ impl Table {
                     match column.value {
                         TableValue::Text(value) => {
                             let text = TextBlock {
-                                content: value.into(),
+                                content: value,
                                 position: location,
                                 style: row_text_style.clone(),
                             };

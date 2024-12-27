@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use crate::{
-    document::{FontRef, PdfResources},
-    graphics::{OperationKeys, OperationWriter, Point, TextBlockState},
+    document::FontRef,
+    graphics::{state::TextBlockState, OperationWriter, TextOperations},
     units::Pt,
     TuxPdfError,
 };
@@ -9,132 +11,79 @@ use crate::{
 pub enum TextModifier {
     FontSize(Pt),
     Font(FontRef),
-    Position(Point),
+    TextRise(Pt),
+    CharacterSpacing(Pt),
+    WordSpacing(Pt),
 }
 
-pub(crate) fn write_modifiers<'resources>(
+pub(crate) fn write_modifiers<'state, 'resources>(
     modifiers: Vec<TextModifier>,
-    current_state: &TextBlockState<'resources>,
-    resources: &'resources PdfResources,
+    current_state: &'state TextBlockState<'resources>,
     writer: &mut OperationWriter,
-) -> Result<Option<TextBlockState<'resources>>, TuxPdfError> {
+) -> Result<Cow<'state, TextBlockState<'resources>>, TuxPdfError> {
     if modifiers.is_empty() {
-        return Ok(None);
+        return Ok(Cow::Borrowed(current_state));
     }
-    let mut font_size = None;
-    let mut font = None;
+    let mut updating_state = current_state.create_updating();
     for modifier in modifiers {
         match modifier {
             TextModifier::FontSize(size) => {
-                font_size = Some(size);
+                updating_state.font_size = Some(size);
             }
             TextModifier::Font(font_ref) => {
-                font = Some(font_ref);
+                updating_state.font = Some(font_ref);
             }
-            TextModifier::Position(position) => {
-                writer.add_operation(OperationKeys::TextPosition, position.into());
+            TextModifier::TextRise(rise) => {
+                updating_state.text_rise = Some(rise);
+                writer.add_operation(TextOperations::TextRise, vec![rise.into()]);
+            }
+            TextModifier::CharacterSpacing(spacing) => {
+                updating_state.character_spacing = Some(spacing);
+                writer.add_operation(TextOperations::CharacterSpace, vec![spacing.into()]);
+            }
+            TextModifier::WordSpacing(spacing) => {
+                updating_state.word_spacing = Some(spacing);
+                writer.add_operation(TextOperations::WordSpace, vec![spacing.into()]);
             }
         }
     }
-    let block_state = match (font_size, font) {
-        (Some(size), Some(font)) => {
-            let font_type = resources
-                .fonts
-                .internal_font_type(&font)
-                .ok_or(TuxPdfError::from(font.clone()))?;
-            let new_state = TextBlockState {
-                font: font.clone(),
-                font_size: size,
-                font_type,
-            };
-            writer.add_operation(OperationKeys::TextFont, vec![font.into(), size.into()]);
-            Some(new_state)
-        }
-        (Some(size), None) => {
-            writer.add_operation(
-                OperationKeys::TextFont,
-                vec![current_state.font.clone().into(), size.into()],
-            );
-            Some(TextBlockState {
-                font: current_state.font.clone(),
-                font_size: size,
-                font_type: current_state.font_type,
-            })
-        }
-        (None, Some(font)) => {
-            let font_type = resources
-                .fonts
-                .internal_font_type(&font)
-                .ok_or(TuxPdfError::from(font.clone()))?;
-            let new_state = TextBlockState {
-                font: font.clone(),
-                font_size: current_state.font_size,
-                font_type,
-            };
-            writer.add_operation(
-                OperationKeys::TextFont,
-                vec![font.into(), current_state.font_size.into()],
-            );
-            Some(new_state)
-        }
-        _ => None,
-    };
-    Ok(block_state)
+    if let Some(new_state) = updating_state.build(Some(writer))? {
+        Ok(Cow::Owned(new_state))
+    } else {
+        Ok(Cow::Borrowed(current_state))
+    }
 }
 
-pub(crate) fn state_from_modifiers<'resources>(
+pub(crate) fn state_from_modifiers<'state, 'resources>(
     modifiers: &[TextModifier],
-    current_state: &TextBlockState<'resources>,
-    resources: &'resources PdfResources,
-) -> Result<Option<TextBlockState<'resources>>, TuxPdfError> {
+    current_state: &'state TextBlockState<'resources>,
+) -> Result<Cow<'state, TextBlockState<'resources>>, TuxPdfError> {
     if modifiers.is_empty() {
-        return Ok(None);
+        return Ok(Cow::Borrowed(current_state));
     }
-    let mut font_size = None;
-    let mut font = None;
+    let mut block_state = current_state.create_updating();
     for modifier in modifiers {
         match modifier {
             TextModifier::FontSize(size) => {
-                font_size = Some(size);
+                block_state.font_size = Some(*size);
             }
             TextModifier::Font(font_ref) => {
-                font = Some(font_ref);
+                block_state.font = Some(font_ref.clone());
             }
-            _ => {}
+            TextModifier::TextRise(rise) => {
+                block_state.text_rise = Some(*rise);
+            }
+            TextModifier::CharacterSpacing(spacing) => {
+                block_state.character_spacing = Some(*spacing);
+            }
+            TextModifier::WordSpacing(spacing) => {
+                block_state.word_spacing = Some(*spacing);
+            }
         }
     }
-    let block_state = match (font_size, font) {
-        (Some(size), Some(font)) => {
-            let font_type = resources
-                .fonts
-                .internal_font_type(&font)
-                .ok_or(TuxPdfError::from(font.clone()))?;
-            let new_state = TextBlockState {
-                font: font.clone(),
-                font_size: *size,
-                font_type,
-            };
-
-            Some(new_state)
-        }
-        (Some(size), None) => Some(TextBlockState {
-            font: current_state.font.clone(),
-            font_size: *size,
-            font_type: current_state.font_type,
-        }),
-        (None, Some(font)) => {
-            let font_type = resources
-                .fonts
-                .internal_font_type(&font)
-                .ok_or(TuxPdfError::from(font.clone()))?;
-            let new_state = TextBlockState {
-                font: font.clone(),
-                font_size: current_state.font_size,
-                font_type,
-            };
-            Some(new_state)
-        }
-        _ => None,
-    };
-    Ok(block_state)
+    if let Some(new_state) = block_state.build(None)? {
+        Ok(Cow::Owned(new_state))
+    } else {
+        Ok(Cow::Borrowed(current_state))
+    }
 }

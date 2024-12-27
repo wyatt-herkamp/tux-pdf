@@ -1,11 +1,9 @@
-use std::borrow::Cow;
-
 use crate::{
     document::PdfDocument,
     graphics::{
-        layouts::grid::{GridColumnMinWidth, GridStyleGroup},
-        size::{SimpleRenderSize, Size},
-        TextStyle,
+        layouts::grid::{GridColumnMaxWidth, GridColumnMinWidth, GridStyleGroup},
+        size::{RenderSize, Size},
+        TextBlockContent, TextStyle,
     },
 };
 
@@ -13,7 +11,7 @@ use super::{CellStyle, ColumnStyle, RowStyles};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Column {
-    pub header: String,
+    pub header: TextBlockContent,
     pub styles: Option<ColumnStyle>,
 }
 impl Column {
@@ -29,7 +27,17 @@ impl Column {
 
         self
     }
-
+    pub fn with_max_width(mut self, max_width: GridColumnMaxWidth) -> Self {
+        if let Some(column_styles) = self.styles.as_mut() {
+            column_styles.max_width = Some(max_width);
+        } else {
+            self.styles = Some(ColumnStyle {
+                max_width: Some(max_width),
+                ..Default::default()
+            });
+        }
+        self
+    }
     pub fn with_min_width(mut self, min_width: GridColumnMinWidth) -> Self {
         if let Some(column_styles) = self.styles.as_mut() {
             column_styles.min_width = Some(min_width);
@@ -43,45 +51,56 @@ impl Column {
     }
 }
 
-impl From<&str> for Column {
-    fn from(header: &str) -> Self {
+impl<T> From<T> for Column
+where
+    T: Into<TextBlockContent>,
+{
+    fn from(header: T) -> Self {
         Self {
-            header: header.to_owned(),
+            header: header.into(),
             ..Default::default()
         }
     }
 }
-impl From<String> for Column {
-    fn from(header: String) -> Self {
-        Self {
-            header,
-            ..Default::default()
-        }
-    }
-}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TableValue {
-    Text(String),
+    Text(TextBlockContent),
     BlankSpace,
 }
-#[derive(Debug, Clone, PartialEq)]
-pub struct TableValueWithStyle {
-    pub value: TableValue,
-    pub style: Option<CellStyle>,
-}
-impl From<&str> for TableValue {
-    fn from(text: &str) -> Self {
-        Self::Text(text.to_owned())
-    }
-}
-impl From<String> for TableValue {
-    fn from(text: String) -> Self {
-        Self::Text(text)
+impl<T> From<T> for TableValue
+where
+    T: Into<TextBlockContent>,
+{
+    fn from(header: T) -> Self {
+        Self::Text(header.into())
     }
 }
 impl From<()> for TableValue {
     fn from(_: ()) -> Self {
         Self::BlankSpace
+    }
+}
+impl Default for TableValue {
+    fn default() -> Self {
+        Self::BlankSpace
+    }
+}
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TableValueWithStyle {
+    pub value: TableValue,
+    pub style: Option<CellStyle>,
+}
+
+impl<T> From<T> for TableValueWithStyle
+where
+    T: Into<TableValue>,
+{
+    fn from(value: T) -> Self {
+        Self {
+            value: value.into(),
+            style: None,
+        }
     }
 }
 
@@ -109,21 +128,9 @@ impl Row {
     ) -> Result<Vec<Size>, crate::TuxPdfError> {
         self.values
             .iter()
-            .map(|value| {
-                let text_style = if let Some(style) = value
-                    .style
-                    .as_ref()
-                    .and_then(|style| style.text_style.as_ref())
-                {
-                    style.merge_with_full(default_text_style)
-                } else {
-                    Cow::Borrowed(default_text_style)
-                };
-
-                match &value.value {
-                    TableValue::Text(text) => (*text).render_size(document, text_style.as_ref()),
-                    TableValue::BlankSpace => ().render_size(document, &()),
-                }
+            .map(|value| match &value.value {
+                TableValue::Text(text) => (*text).render_size(document, default_text_style),
+                TableValue::BlankSpace => ().render_size(document, &()),
             })
             .collect()
     }

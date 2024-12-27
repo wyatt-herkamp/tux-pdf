@@ -24,7 +24,7 @@ pub enum GridColumnMinWidth {
 pub enum GridColumnMaxWidth {
     /// The column width is fixed and will not be recalculated
     Fixed(Pt),
-    /// The column width is a percentage of the total width
+    /// The column width is a percentage of the available width
     Percentage(f32),
 }
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -58,6 +58,7 @@ pub struct GridCellStylingRules {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct GridBuilderRow {
     pub y: Pt,
+    pub content_start_y: Pt,
     pub height: Pt,
     pub styles: Option<GridStyleGroup>,
 }

@@ -10,7 +10,7 @@ use crate::{
 use lopdf::{content::Content, dictionary, Dictionary, Object, ObjectId, Stream};
 pub use meta::*;
 pub use resources::*;
-use types::{CatalogObject, Page, PagesObject, PdfDirectoryType, Resources};
+use types::{Page, PagesObject, PdfDirectoryType, Resources};
 pub mod types;
 pub struct PdfDocument {
     /// Metadata about the document (author, info, XMP metadata, etc.)
@@ -53,7 +53,11 @@ impl PdfDocument {
 
     pub fn write_to_lopdf_document(self) -> TuxPdfResult<lopdf::Document> {
         let mut writer = DocumentWriter::default();
-
+        {
+            let info_dict: Dictionary = self.metadata.info.into();
+            let info_dict_id = writer.insert_object(info_dict.into());
+            writer.info_dict = Some(info_dict_id);
+        }
         let fonts = self.resources.fonts.dictionary(&mut writer);
         writer.fonts(fonts);
 
@@ -101,6 +105,8 @@ pub struct DocumentWriter {
     pages: Vec<ObjectId>,
     pages_id: Option<ObjectId>,
     resources_id: Option<ObjectId>,
+    info_dict: Option<ObjectId>,
+    catalog_extras: Option<CatalogInfo>,
     document: lopdf::Document,
 }
 impl Default for DocumentWriter {
@@ -110,7 +116,9 @@ impl Default for DocumentWriter {
             document: lopdf::Document::with_version("1.7"),
             pages: Vec::new(),
             pages_id: None,
+            info_dict: None,
             resources_id: None,
+            catalog_extras: None,
         }
     }
 }
@@ -155,6 +163,8 @@ impl DocumentWriter {
             pages,
             pages_id,
             resources_id,
+            info_dict,
+            catalog_extras,
             mut document,
         } = self;
         let pages_id = pages_id.ok_or(TuxPdfError::NoPagesCreated)?;
@@ -163,10 +173,16 @@ impl DocumentWriter {
             let resources = Resources { font: fonts };
             document.set_object(resources_id, resources.into_dictionary());
         }
+        let catalog_object = catalog_extras
+            .unwrap_or_default()
+            .create_catalog_object(pages_id);
         // Create Catalog object
-        let catalog_id = document.add_object(CatalogObject { pages: pages_id }.into_dictionary());
+        let catalog_id = document.add_object(catalog_object.into_dictionary());
         // Point the Root key to the Pages object
         document.trailer.set("Root", catalog_id);
+        if let Some(info_dict) = info_dict {
+            document.trailer.set("Info", info_dict);
+        }
 
         Ok(document)
     }

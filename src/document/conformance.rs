@@ -1,6 +1,5 @@
 //! Module regulating the comparison and feature sets / allowed plugins of a PDF document
 //!
-//! NOTE: All credit to Wikipedia:
 //!
 //! [PDF/X Versions](https://en.wikipedia.org/wiki/PDF/X)
 //!
@@ -9,10 +8,6 @@
 use std::borrow::Cow;
 pub static A1B_2005_PDF_1_4_FEATURES: &[PdfConformanceFeatures] = &[];
 
-/// List of (relevant) PDF versions
-/// Please note the difference between **PDF/A** (archiving), **PDF/UA** (universal acessibility),
-/// **PDF/X** (printing), **PDF/E** (engineering / CAD), **PDF/VT** (large volume transactions with
-/// repeated content)
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[allow(non_camel_case_types)]
 pub enum PdfConformance {
@@ -27,8 +22,6 @@ impl Default for PdfConformance {
     }
 }
 
-/// Allows building custom conformance profiles. This is useful if you want very small documents for example and
-/// you don't __need__ conformance with any PDF standard, you just want a PDF file.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CustomPdfConformance {
     /// Identifier for this conformance

@@ -9,7 +9,7 @@ use ahash::{HashMap, HashMapExt};
 
 use ttf_parser::Face;
 
-use super::{FontType, GlyphMetrics};
+use super::{ExternalLoadedFont, GlyphMetrics};
 #[derive(Debug, Clone)]
 pub struct StaticTtfFace {
     inner: Box<Face<'static>>,
@@ -35,7 +35,7 @@ impl StaticTtfFace {
         &self.inner
     }
 }
-impl FontType for StaticTtfFace {
+impl ExternalLoadedFont for StaticTtfFace {
     fn units_per_em(&self) -> u16 {
         self.as_face_ref().units_per_em()
     }
@@ -100,5 +100,25 @@ impl FontType for StaticTtfFace {
     }
     fn font_bytes(&self) -> &[u8] {
         self.inner.raw_face().data
+    }
+}
+#[cfg(test)]
+mod tests {
+
+    use crate::document::{font_tests::DebugFontType, static_ttf_parser::StaticTtfFace};
+
+    // TODO: Test for memory leaks
+    #[test]
+    fn parse_roboto_regular() -> anyhow::Result<()> {
+        static TTF_DATA: &[u8] =
+            include_bytes!("../../../../tests/fonts/Roboto/Roboto-Regular.ttf");
+
+        let face = StaticTtfFace::from_slice(TTF_DATA, 0)?;
+
+        let debug = DebugFontType(&face);
+        println!("--- Font (tests/fonts/Roboto/Roboto-Regular.ttf) ---");
+        println!("{:#?}", debug);
+
+        Ok(())
     }
 }

@@ -38,31 +38,5 @@ pub type TuxPdfResult<T> = Result<T, TuxPdfError>;
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use std::{path::PathBuf, sync::Once};
-    use tracing::{error, info, level_filters::LevelFilter};
-    use tracing_subscriber::{filter, layer::SubscriberExt, util::SubscriberInitExt, Layer};
-    /// Returns the path to the fonts directory in the tests directory
-    pub fn test_fonts_directory() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("fonts")
-    }
-    pub fn does_end_with_ttf(path: &std::path::Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "ttf")
-    }
-    pub fn init_logger() {
-        static ONCE: Once = std::sync::Once::new();
-        ONCE.call_once(|| {
-            let stdout_log = tracing_subscriber::fmt::layer().pretty().without_time();
-            tracing_subscriber::registry()
-                .with(
-                    stdout_log.with_filter(
-                        filter::Targets::new().with_target("tux_pdf", LevelFilter::TRACE),
-                    ),
-                )
-                .init();
-        });
-        info!("Logger initialized");
-        error!("This is an error message");
-    }
+    include!("../tests/test_utils_external.rs");
 }

@@ -2,7 +2,10 @@ use lopdf::Object;
 
 use crate::{units::Pt, utils::copy_into};
 
-use super::{color::Color, points_to_object_array, OperationKeys, PdfOperationType, Point};
+use super::{
+    color::Color, points_to_object_array, OperationKeys, PathConstructionOperators,
+    PathPaintOperationKeys, PdfOperationType, Point,
+};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StraightLine<U = Pt> {
@@ -49,17 +52,17 @@ impl PdfOperationType for StraightLine {
         if self.points.is_empty() {
             return Ok(());
         }
-        writer.add_operation(OperationKeys::PathMoveTo, self.start.into());
+        writer.add_operation(PathConstructionOperators::PathMoveTo, self.start.into());
 
         for point in self.points.iter() {
             let point = *point;
-            writer.add_operation(OperationKeys::PathLineTo, point.into());
+            writer.add_operation(PathConstructionOperators::PathLineTo, point.into());
         }
 
         if self.is_closed {
-            writer.push_empty_op(OperationKeys::PathPaintStrokeClose);
+            writer.push_empty_op(PathPaintOperationKeys::StrokeClose);
         } else {
-            writer.push_empty_op(OperationKeys::PathPaintStroke);
+            writer.push_empty_op(PathPaintOperationKeys::Stroke);
         }
 
         Ok(())
@@ -92,17 +95,17 @@ impl Default for LinePoint {
     }
 }
 
-copy_into!(LinePoint => (OperationKeys, Vec<Object>));
-impl From<LinePoint> for (OperationKeys, Vec<Object>) {
+copy_into!(LinePoint => (PathConstructionOperators, Vec<Object>));
+impl From<LinePoint> for (PathConstructionOperators, Vec<Object>) {
     fn from(value: LinePoint) -> Self {
         match value {
-            LinePoint::Point(point) => (OperationKeys::PathLineTo, point.into()),
+            LinePoint::Point(point) => (PathConstructionOperators::PathLineTo, point.into()),
             LinePoint::V1Bezier { start, end } => (
-                OperationKeys::BezierCurveTwoV1,
+                PathConstructionOperators::BezierCurveTwoV1,
                 points_to_object_array(&[start, end]),
             ),
             LinePoint::V2Bezier { start, end } => (
-                OperationKeys::BezierCurveTwoV2,
+                PathConstructionOperators::BezierCurveTwoV2,
                 points_to_object_array(&[start, end]),
             ),
             LinePoint::ThreePointBezier {
@@ -110,7 +113,7 @@ impl From<LinePoint> for (OperationKeys, Vec<Object>) {
                 end,
                 new_control,
             } => (
-                OperationKeys::BezierCurveFour,
+                PathConstructionOperators::BezierCurveFour,
                 points_to_object_array(&[start, new_control, end]),
             ),
         }
@@ -153,7 +156,7 @@ impl PdfOperationType for Line {
         if self.points.is_empty() {
             return Ok(());
         }
-        writer.add_operation(OperationKeys::PathMoveTo, self.start.into());
+        writer.add_operation(PathConstructionOperators::PathMoveTo, self.start.into());
 
         for point in self.points.iter() {
             let (key, operands) = point.into();
@@ -161,9 +164,9 @@ impl PdfOperationType for Line {
         }
 
         if self.is_closed {
-            writer.push_empty_op(OperationKeys::PathPaintStrokeClose);
+            writer.push_empty_op(PathPaintOperationKeys::StrokeClose);
         } else {
-            writer.push_empty_op(OperationKeys::PathPaintStroke);
+            writer.push_empty_op(PathPaintOperationKeys::Stroke);
         }
 
         Ok(())

@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    document::{FontRef, FontRenderSizeParams, InternalFontType},
+    document::{FontRef, FontType},
     graphics::{Point, TextStyle},
     units::Pt,
 };
@@ -97,7 +97,7 @@ where
     }
 }
 
-pub trait SimpleRenderSize {
+pub trait RenderSize {
     type Settings: Debug;
     fn render_size(
         &self,
@@ -105,9 +105,9 @@ pub trait SimpleRenderSize {
         settings: &Self::Settings,
     ) -> Result<Size, crate::TuxPdfError>;
 }
-impl<T> SimpleRenderSize for &T
+impl<T> RenderSize for &T
 where
-    T: SimpleRenderSize,
+    T: RenderSize,
 {
     type Settings = T::Settings;
     fn render_size(
@@ -119,7 +119,7 @@ where
     }
 }
 
-impl SimpleRenderSize for () {
+impl RenderSize for () {
     type Settings = ();
     fn render_size(
         &self,
@@ -129,7 +129,7 @@ impl SimpleRenderSize for () {
         Ok(Size::default())
     }
 }
-impl SimpleRenderSize for &str {
+impl RenderSize for &str {
     type Settings = TextStyle;
 
     fn render_size(
@@ -138,8 +138,6 @@ impl SimpleRenderSize for &str {
         settings: &TextStyle,
     ) -> Result<Size, crate::TuxPdfError> {
         let font = &settings.font_ref;
-        let font_size = settings.font_size;
-        let font_options = FontRenderSizeParams { font_size };
         match font {
             FontRef::External(font_id) => {
                 let font = document
@@ -147,15 +145,15 @@ impl SimpleRenderSize for &str {
                     .fonts
                     .get_external_font(font_id)
                     .ok_or_else(|| crate::TuxPdfError::FontNotRegistered(font_id.clone()))?;
-                Ok(font.calculate_size_of_text(self.as_ref(), font_options))
+                Ok(font.calculate_size_of_text(self.as_ref(), settings))
             }
             FontRef::Builtin(builtin_font) => {
-                Ok(builtin_font.calculate_size_of_text(self.as_ref(), font_options))
+                Ok(builtin_font.calculate_size_of_text(self.as_ref(), settings))
             }
         }
     }
 }
-impl SimpleRenderSize for String {
+impl RenderSize for String {
     type Settings = TextStyle;
 
     fn render_size(
@@ -167,7 +165,7 @@ impl SimpleRenderSize for String {
     }
 }
 
-impl SimpleRenderSize for Cow<'_, str> {
+impl RenderSize for Cow<'_, str> {
     type Settings = TextStyle;
     fn render_size(
         &self,
@@ -176,15 +174,4 @@ impl SimpleRenderSize for Cow<'_, str> {
     ) -> Result<Size, crate::TuxPdfError> {
         self.as_ref().render_size(document, settings)
     }
-}
-
-pub trait RenderSizeObject {
-    fn render_size(
-        &self,
-        document: &crate::document::PdfDocument,
-    ) -> Result<Size, crate::TuxPdfError>;
-
-    fn allows_max_width(&self) -> bool;
-
-    fn set_max_width(&mut self, max_width: Pt) -> Result<(), crate::TuxPdfError>;
 }

@@ -111,7 +111,7 @@ impl PdfFontMap {
     }
     pub fn register_external_font(
         &mut self,
-        font: impl Into<DynFontTypes>,
+        font: impl Into<ExternalFont>,
     ) -> Result<FontRef, TuxPdfError> {
         let font = font.into();
         let font_id = FontId::default();
@@ -169,75 +169,87 @@ impl PdfFontMap {
     }
     pub fn internal_font_type(&self, font_ref: &FontRef) -> Option<InternalFontTypes> {
         match font_ref {
-            FontRef::External(id) => self
-                .map
-                .get(id)
-                .map(|font| InternalFontTypes::External(font)),
-            FontRef::Builtin(builtin) => Some(InternalFontTypes::Builtin(*builtin)),
+            FontRef::External(id) => self.map.get(id).map(InternalFontTypes::External),
+            FontRef::Builtin(builtin) => {
+                if self.is_built_in_registered(builtin) {
+                    Some(InternalFontTypes::Builtin(*builtin))
+                } else {
+                    None
+                }
+            }
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Default, Copy)]
-pub(crate) struct FontRenderSizeParams {
-    pub font_size: Pt,
+/// Render Size Parameters. Used for calculating the size of text.
+pub trait FontRenderSizeParams {
+    /// The font size.
+    fn font_size(&self) -> Pt;
+    /// The character spacing.
+    fn character_spacing(&self) -> Option<Pt>;
+    /// The word spacing.
+    fn word_spacing(&self) -> Option<Pt>;
+    /// The text rise.
+    fn text_rise(&self) -> Option<Pt>;
 }
-pub(crate) trait InternalFontType {
+/// Font types
+pub trait FontType {
     /// Calculate the size of the text.
-    fn calculate_size_of_text(&self, text: &str, params: FontRenderSizeParams) -> Size;
+    fn calculate_size_of_text<P: FontRenderSizeParams>(&self, text: &str, params: &P) -> Size;
+    /// Calculate the height of the text.
     #[inline(always)]
-    fn calculate_height_of_text(&self, text: &str, params: FontRenderSizeParams) -> Pt {
+    fn calculate_height_of_text<P: FontRenderSizeParams>(&self, text: &str, params: &P) -> Pt {
         self.calculate_size_of_text(text, params).height
     }
-    fn size_of_char(&self, c: char, params: FontRenderSizeParams) -> Option<Size>;
-
-    fn encode_text(&self, text: String) -> Vec<u8>;
+    /// Calculate the size of a character.
+    fn size_of_char<P: FontRenderSizeParams>(&self, c: char, params: &P) -> Option<Size>;
+    /// Encode the text.
+    fn encode_text(&self, text: &str) -> Vec<u8>;
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InternalFontTypes<'font> {
     External(&'font ParsedFont),
     Builtin(BuiltinFont),
 }
-impl InternalFontType for InternalFontTypes<'_> {
-    fn calculate_size_of_text(&self, text: &str, params: FontRenderSizeParams) -> Size {
-        match self {
-            InternalFontTypes::External(font) => font.calculate_size_of_text(text, params),
-            InternalFontTypes::Builtin(builtin) => builtin.calculate_size_of_text(text, params),
-        }
-    }
-    fn calculate_height_of_text(&self, text: &str, params: FontRenderSizeParams) -> Pt {
-        match self {
-            InternalFontTypes::External(font) => font.calculate_height_of_text(text, params),
-            InternalFontTypes::Builtin(builtin) => builtin.calculate_height_of_text(text, params),
-        }
-    }
-    fn size_of_char(&self, c: char, params: FontRenderSizeParams) -> Option<Size> {
-        match self {
-            InternalFontTypes::External(font) => font.size_of_char(c, params),
-            InternalFontTypes::Builtin(builtin) => builtin.size_of_char(c, params),
-        }
-    }
-    fn encode_text(&self, text: String) -> Vec<u8> {
+impl FontType for InternalFontTypes<'_> {
+    fn encode_text(&self, text: &str) -> Vec<u8> {
         match self {
             InternalFontTypes::External(font) => font.encode_text(text),
             InternalFontTypes::Builtin(builtin) => builtin.encode_text(text),
         }
     }
+
+    fn calculate_size_of_text<P: FontRenderSizeParams>(&self, text: &str, params: &P) -> Size {
+        match self {
+            InternalFontTypes::External(font) => font.calculate_size_of_text(text, params),
+            InternalFontTypes::Builtin(builtin) => builtin.calculate_size_of_text(text, params),
+        }
+    }
+
+    fn size_of_char<P: FontRenderSizeParams>(&self, c: char, params: &P) -> Option<Size> {
+        match self {
+            InternalFontTypes::External(font) => font.size_of_char(c, params),
+            InternalFontTypes::Builtin(builtin) => builtin.size_of_char(c, params),
+        }
+    }
+    fn calculate_height_of_text<P: FontRenderSizeParams>(&self, text: &str, params: &P) -> Pt {
+        self.calculate_size_of_text(text, params).height
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedFont {
-    pub(crate) font: DynFontTypes,
+    pub(crate) font: ExternalFont,
     pub(crate) font_name: String,
     // TODO
 }
-impl InternalFontType for ParsedFont {
-    fn calculate_size_of_text(&self, text: &str, params: FontRenderSizeParams) -> Size {
+impl FontType for ParsedFont {
+    fn calculate_size_of_text<P: FontRenderSizeParams>(&self, text: &str, params: &P) -> Size {
         let mut width = Pt::default();
         let mut height = f32::default();
         for c in text.chars() {
             if let Some(glyph_id) = self.get_glyph_id(c) {
                 if let Some(metrics) = self.font.glyph_metrics(glyph_id) {
                     let (glyph_width, glyph_height) =
-                        metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size);
+                        metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
                     width += glyph_width;
                     height = height.max(glyph_height.0);
                 }
@@ -252,11 +264,11 @@ impl InternalFontType for ParsedFont {
             height: height.pt(),
         }
     }
-    fn size_of_char(&self, c: char, params: FontRenderSizeParams) -> Option<Size> {
+    fn size_of_char<P: FontRenderSizeParams>(&self, c: char, params: &P) -> Option<Size> {
         if let Some(glyph_id) = self.get_glyph_id(c) {
             if let Some(metrics) = self.font.glyph_metrics(glyph_id) {
                 let (glyph_width, glyph_height) =
-                    metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size);
+                    metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
                 return Some(Size {
                     width: glyph_width,
                     height: glyph_height,
@@ -266,7 +278,7 @@ impl InternalFontType for ParsedFont {
         None
     }
 
-    fn encode_text(&self, text: String) -> Vec<u8> {
+    fn encode_text(&self, text: &str) -> Vec<u8> {
         text.chars()
             .filter_map(|char| self.get_glyph_id(char))
             .flat_map(|glyph_id| vec![(glyph_id >> 8) as u8, (glyph_id & 255) as u8])
@@ -446,14 +458,7 @@ pub enum FontRef {
     External(FontId),
     Builtin(BuiltinFont),
 }
-impl FontRef {
-    /// Internal Only
-    ///
-    /// This will just use a default font to allow for Default implementations
-    pub(crate) fn internal_default() -> FontRef {
-        FontRef::Builtin(BuiltinFont::Helvetica)
-    }
-}
+
 impl FontRef {
     pub fn id(&self) -> &str {
         match self {
@@ -493,7 +498,7 @@ fn gid_to_unicode_beg(face_name: &str) -> String {
     format!(
         r#"/CIDInit /ProcSet findresource begin
 
-12 dict begin
+12 dict beginInternalFontTypes
 
 begincmap
 
@@ -530,12 +535,12 @@ end
 pub(crate) mod font_tests {
     use std::fmt::Debug;
 
-    use super::FontType;
+    use super::ExternalLoadedFont;
 
     pub struct DebugFontType<'font, T>(pub &'font T);
     impl<T> Debug for DebugFontType<'_, T>
     where
-        T: FontType,
+        T: ExternalLoadedFont,
     {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("FontType")
@@ -547,10 +552,4 @@ pub(crate) mod font_tests {
                 .finish()
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BuiltinOrExsternalFont<'font> {
-    Builtin(BuiltinFont),
-    External(&'font ParsedFont),
 }

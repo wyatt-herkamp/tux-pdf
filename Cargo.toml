@@ -12,12 +12,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 ttf-parser = "0.25"
-time = { version = "0.3" }
+time = { version = "0.3", features = ["local-offset"] }
 rand = { version = "0.8" }
 strum = { version = "0.26", features = ["derive"] }
 
 resvg = { version = "0.44", default-features = false, optional = true }
-
+chrono = { version = "0.4", features = ["serde"] }
 image = { version = "0.25", optional = true }
 bitflags = "2"
 either = "1"

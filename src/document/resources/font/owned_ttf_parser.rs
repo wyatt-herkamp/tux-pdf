@@ -9,7 +9,7 @@ use ttf_parser::Face;
 
 use crate::TuxPdfError;
 
-use super::{FontType, GlyphMetrics};
+use super::{ExternalLoadedFont, GlyphMetrics};
 #[derive(Debug, Clone, PartialEq)]
 pub struct OwnedPdfTtfFont {
     inner: Arc<OwnedFace>,
@@ -43,7 +43,7 @@ impl OwnedPdfTtfFont {
         self.inner.as_face_ref()
     }
 }
-impl FontType for OwnedPdfTtfFont {
+impl ExternalLoadedFont for OwnedPdfTtfFont {
     fn units_per_em(&self) -> u16 {
         self.inner.as_face_ref().units_per_em()
     }
@@ -233,22 +233,19 @@ impl Drop for SelfRefVecFace {
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        document::{font_tests::DebugFontType, owned_ttf_parser::OwnedFace},
-        tests::does_end_with_ttf,
-    };
+    use crate::document::{font_tests::DebugFontType, owned_ttf_parser::OwnedFace};
 
     use super::OwnedPdfTtfFont;
     // TODO: Test for memory leaks
     #[test]
     fn parse_roboto() -> anyhow::Result<()> {
-        let roboto_path = crate::tests::test_fonts_directory().join("Roboto");
+        let roboto_path = crate::tests::fonts_dir().join("Roboto");
 
         // Iterate over all files in the directory
         for entry in std::fs::read_dir(roboto_path)? {
             let entry = entry?;
             let path = entry.path();
-            if !does_end_with_ttf(&path) {
+            if !crate::tests::does_end_with_ttf(&path) {
                 continue;
             }
             let data = std::fs::read(&path)?;

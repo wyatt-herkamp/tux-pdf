@@ -13,7 +13,6 @@ use crate::{
 /// Currently cell styles are not supported
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CellStyle {
-    pub text_style: Option<PartialOrFullTextStyle>,
     pub fill_color: Option<Color>,
     pub border_color: Option<Color>,
     pub border_width: Option<Pt>,

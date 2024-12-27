@@ -4,14 +4,17 @@ use clap::Parser;
 use tux_pdf::{
     document::{static_ttf_parser::StaticTtfFace, PdfDocument},
     graphics::{
-        color::BLACK_RGB,
-        layouts::grid::GridStyleGroup,
+        color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
+        layouts::grid::{GridColumnMaxWidth, GridStyleGroup},
         styles::Margin,
-        table::{Column, Row, Table, TablePageRules, TableStyles, TableValueWithStyle},
+        table::{
+            Column, ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles,
+            TableValueWithStyle,
+        },
         TextStyle,
     },
     page::{page_sizes::A4, PdfPage},
-    units::UnitType,
+    units::{Pt, UnitType},
     TuxPdfError,
 };
 static ROBOTO_FONT: &[u8] = include_bytes!("../../tests/fonts/Roboto/Roboto-Regular.ttf");
@@ -33,6 +36,10 @@ fn table_page(_: &mut PdfDocument) -> Result<(TablePageRules, PdfPage), TuxPdfEr
     };
     Ok((page_rules, page))
 }
+fn width_per_column(number_of_columns: usize) -> Pt {
+    let width = A4.landscape().width - 20f32.pt();
+    width / (number_of_columns as f32).pt()
+}
 fn main() -> anyhow::Result<()> {
     let args = CsvToPdf::parse();
     if !args.cvs_file.exists() {
@@ -50,6 +57,12 @@ fn main() -> anyhow::Result<()> {
         "Table from {}",
         args.cvs_file.file_name().unwrap().to_string_lossy()
     ));
+
+    doc.metadata.info.producer = Some("tux-pdf/examples/cvs-to-pdf".to_string());
+    doc.metadata.info.author = Some("tux-pdf/examples/cvs-to-pdf".to_string());
+    doc.metadata.info.creation_date =
+        Some(time::OffsetDateTime::now_local().unwrap_or(time::OffsetDateTime::now_utc()));
+
     let roboto_font = StaticTtfFace::from_slice(ROBOTO_FONT, 0)?;
     let roboto = doc.font_map().register_external_font(roboto_font)?;
 
@@ -90,11 +103,16 @@ fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<Column>, Vec<Row>)> {
     }
 
     let headers = cvs_reader.headers()?.clone();
+    let width_per_column = width_per_column(headers.len());
+    println!("Width per column: {}", width_per_column);
     let header_columns = headers
         .into_iter()
-        .map(|header| Column {
-            header: header.to_owned(),
-            ..Default::default()
+        .map(|value| Column {
+            header: value.into(),
+            styles: Some(ColumnStyle {
+                max_width: Some(GridColumnMaxWidth::Fixed(width_per_column)),
+                ..Default::default()
+            }),
         })
         .collect::<Vec<_>>();
 
@@ -117,10 +135,18 @@ fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<Column>, Vec<Row>)> {
             );
             std::process::exit(1);
         }
-        let row = Row {
-            values,
-            ..Default::default()
+        let styles = if index % 2 == 0 {
+            Some(RowStyles {
+                background_color: Some(GRAY_RGB),
+                ..Default::default()
+            })
+        } else {
+            Some(RowStyles {
+                background_color: Some(WHITE_RGB),
+                ..Default::default()
+            })
         };
+        let row = Row { values, styles };
         rows.push(row);
     }
 

@@ -11,6 +11,7 @@ mod test_utils;
 fn simple_test() -> anyhow::Result<()> {
     init_logger();
     let mut doc = PdfDocument::new("My first document");
+    test_utils::set_metadata_for_test(&mut doc);
     let roboto_font_reader =
         std::fs::File::open(fonts_dir().join("Roboto").join("Roboto-Regular.ttf"))?;
     let roboto_font = OwnedPdfTtfFont::new_from_reader(roboto_font_reader, 0)?;
@@ -61,6 +62,7 @@ pub fn does_end_with_ttf(path: &std::path::Path) -> bool {
 #[test]
 fn all_roboto() -> anyhow::Result<()> {
     let mut doc = PdfDocument::new("Roboto Examples");
+    test_utils::set_metadata_for_test(&mut doc);
 
     let mut page = PdfPage::new_from_page_size(A4);
     let mut text_position = Point {

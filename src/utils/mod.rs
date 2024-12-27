@@ -20,6 +20,7 @@ use crate::graphics::PdfOperationType;
 pub trait IsEmpty {
     fn is_empty(&self) -> bool;
 }
+
 impl<T> IsEmpty for Option<T> {
     fn is_empty(&self) -> bool {
         self.is_none()
@@ -126,7 +127,7 @@ pub trait Merge<Rhs = Self> {
         new.merge_with_option(other);
         new
     }
-
+    #[allow(dead_code)]
     fn merge_into_new(&self, other: Rhs) -> Self
     where
         Self: Clone,
@@ -136,3 +137,16 @@ pub trait Merge<Rhs = Self> {
         new
     }
 }
+
+macro_rules! strum_into_name {
+    (
+        $enum_ty:ty
+    ) => {
+        impl From<$enum_ty> for lopdf::Object {
+            fn from(value: $enum_ty) -> Self {
+                lopdf::Object::Name(value.to_string().into_bytes())
+            }
+        }
+    };
+}
+pub(crate) use strum_into_name;

@@ -45,7 +45,7 @@ impl PdfTaffyLayout {
         let node_id = self.taffy_tree.new_leaf(taffy_styles).unwrap();
         self.items.push(PdfTaffyItem { item, node_id });
     }
-    fn calculate_sizes(&mut self, document: &mut PdfDocument) -> Result<(), TuxPdfError> {
+    fn calculate_sizes(&mut self, document: &PdfDocument) -> Result<(), TuxPdfError> {
         for item in &mut self.items {
             let size = item.item.calculate_size(document)?;
             let mut node = self.taffy_tree.style(item.node_id).unwrap().clone();
@@ -72,7 +72,7 @@ impl PdfTaffyLayout {
     }
     pub fn draw_grid(
         &mut self,
-        document: &mut PdfDocument,
+        document: &PdfDocument,
         page: &mut PdfPage,
     ) -> Result<(), TuxPdfError> {
         self.calculate_sizes(document)?;
@@ -134,11 +134,7 @@ impl PdfTaffyLayout {
         page.add_operation(graphics_items.into());
         Ok(())
     }
-    pub fn render(
-        mut self,
-        document: &mut PdfDocument,
-        page: &mut PdfPage,
-    ) -> Result<(), TuxPdfError> {
+    pub fn render(mut self, document: &PdfDocument, page: &mut PdfPage) -> Result<(), TuxPdfError> {
         self.calculate_sizes(document)?;
         self.compute_layout()?;
         let Self {
@@ -247,8 +243,8 @@ mod tests {
         );
 
         let mut page = PdfPage::new_from_page_size(A4);
-        grid.draw_grid(&mut doc, &mut page)?;
-        grid.render(&mut doc, &mut page)?;
+        grid.draw_grid(&doc, &mut page)?;
+        grid.render(&doc, &mut page)?;
 
         doc.add_page(page);
 

@@ -8,7 +8,6 @@
 
 */
 
-use derive_more::derive::From;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::num::FpCategory;
 use taffy::TrackSizingFunction;

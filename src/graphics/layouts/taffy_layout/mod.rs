@@ -1,6 +1,6 @@
 use super::LayoutError;
-use taffy::{prelude::*, TaffyTree};
-use tracing::{debug, info};
+pub use taffy;
+use taffy::{NodeId, PrintTree, TaffyTree};
 
 use crate::{
     document::PdfDocument,
@@ -12,6 +12,8 @@ use crate::{
     units::{Pt, UnitType},
     TuxPdfError,
 };
+
+use tracing::{debug, info};
 pub type TaffyStyle = taffy::Style;
 use super::{LayoutItem, LayoutItemType};
 

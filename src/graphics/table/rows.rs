@@ -1,7 +1,7 @@
 use crate::{
     document::PdfDocument,
     graphics::{
-        layouts::grid::{GridColumnMaxWidth, GridColumnMinWidth, GridStyleGroup},
+        layouts::table::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
         size::{RenderSize, Size},
         TextBlockContent, TextStyle,
     },
@@ -28,7 +28,7 @@ impl Column {
 
         self
     }
-    pub fn with_max_width(mut self, max_width: GridColumnMaxWidth) -> Self {
+    pub fn with_max_width(mut self, max_width: TableColumnMaxWidth) -> Self {
         if let Some(column_styles) = self.styles.as_mut() {
             column_styles.max_width = Some(max_width);
         } else {
@@ -39,7 +39,7 @@ impl Column {
         }
         self
     }
-    pub fn with_min_width(mut self, min_width: GridColumnMinWidth) -> Self {
+    pub fn with_min_width(mut self, min_width: TableColumnMinWidth) -> Self {
         if let Some(column_styles) = self.styles.as_mut() {
             column_styles.min_width = Some(min_width);
         } else {

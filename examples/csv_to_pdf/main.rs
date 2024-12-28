@@ -5,7 +5,7 @@ use tux_pdf::{
     document::{static_ttf_parser::StaticTtfFace, PdfDocument},
     graphics::{
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
-        layouts::grid::{GridColumnMaxWidth, GridStyleGroup},
+        layouts::table::{TableColumnMaxWidth, GridStyleGroup},
         styles::Margin,
         table::{
             Column, ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles,
@@ -110,7 +110,7 @@ fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<Column>, Vec<Row>)> {
         .map(|value| Column {
             header: value.into(),
             styles: Some(ColumnStyle {
-                max_width: Some(GridColumnMaxWidth::Fixed(width_per_column)),
+                max_width: Some(TableColumnMaxWidth::Fixed(width_per_column)),
                 ..Default::default()
             }),
         })

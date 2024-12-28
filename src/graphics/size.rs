@@ -5,6 +5,8 @@ use std::{
     ops::{Add, AddAssign, Sub},
 };
 
+use taffy::AvailableSpace;
+
 use crate::{
     document::{FontRef, FontType, PdfDocument, ResourceNotRegistered},
     graphics::{Point, TextStyle},
@@ -17,6 +19,23 @@ use super::shapes::OutlineRect;
 pub struct Size<U = Pt> {
     pub width: U,
     pub height: U,
+}
+
+impl From<Size> for taffy::Size<AvailableSpace> {
+    fn from(size: Size) -> taffy::Size<AvailableSpace> {
+        taffy::Size {
+            width: AvailableSpace::Definite(size.width.into()),
+            height: AvailableSpace::Definite(size.height.into()),
+        }
+    }
+}
+impl From<Size> for taffy::Size<taffy::Dimension> {
+    fn from(value: Size) -> Self {
+        Self {
+            width: taffy::Dimension::Length(value.width.into()),
+            height: taffy::Dimension::Length(value.height.into()),
+        }
+    }
 }
 impl Size<Px> {
     /// Converts the current size into a Size with the unit as [Pt]
@@ -63,6 +82,7 @@ impl<U> From<Size<U>> for (U, U) {
         (size.width, size.height)
     }
 }
+
 impl<U> Add<Size<U>> for Size<U>
 where
     U: Add<Output = U>,

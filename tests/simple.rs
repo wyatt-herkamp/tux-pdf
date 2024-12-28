@@ -23,6 +23,18 @@ fn simple_test() -> anyhow::Result<()> {
         .register_builtin_font(tux_pdf::document::BuiltinFont::Helvetica);
 
     let mut page = PdfPage::new_from_page_size(A4);
+    let test_0_0 = TextBlock {
+        content: "Font is Built in Helvetica \n I am a new line!!!".into(),
+        position: Point {
+            x: 0.into(),
+            y: 0.into(),
+        },
+        style: TextStyle {
+            font_ref: font.clone(),
+            ..Default::default()
+        },
+    };
+    page.add_operation(test_0_0.into());
     let test_text = TextBlock {
         content: "Font is Built in Helvetica \n I am a new line!!!".into(),
         position: Point {

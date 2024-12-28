@@ -13,18 +13,18 @@ use crate::{
     utils::Merge,
 };
 mod types;
-pub struct GridRowPlacementIter<'a> {
-    table_rect: &'a GridLayout,
+pub struct TableRowPlacementIter<'a> {
+    table_rect: &'a TableLayout,
     current_row: usize,
 }
-impl<'a> Iterator for GridRowPlacementIter<'a> {
-    type Item = GridColumnPlacementIter<'a>;
+impl<'a> Iterator for TableRowPlacementIter<'a> {
+    type Item = TableColumnPlacementIter<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_row >= self.table_rect.rows.len() {
             return None;
         }
-        let column_locations = GridColumnPlacementIter {
+        let column_locations = TableColumnPlacementIter {
             table_rect: self.table_rect,
             row: self.current_row,
             current_column: 0,
@@ -33,12 +33,12 @@ impl<'a> Iterator for GridRowPlacementIter<'a> {
         Some(column_locations)
     }
 }
-pub struct GridColumnPlacementIter<'a> {
-    table_rect: &'a GridLayout,
+pub struct TableColumnPlacementIter<'a> {
+    table_rect: &'a TableLayout,
     row: usize,
     current_column: usize,
 }
-impl Iterator for GridColumnPlacementIter<'_> {
+impl Iterator for TableColumnPlacementIter<'_> {
     type Item = Point;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -61,14 +61,14 @@ impl Iterator for GridColumnPlacementIter<'_> {
 ///
 /// A new one these must be created for each page
 #[derive(Debug, Clone, PartialEq)]
-pub struct GridLayout {
+pub struct TableLayout {
     pub(crate) final_size: Size,
     pub(crate) start: Point,
     pub(crate) styles: GridStyles,
-    pub(crate) rows: Vec<GridRow>,
+    pub(crate) rows: Vec<TableRow>,
     pub(crate) columns: Vec<GridColumn>,
 }
-impl GridLayout {
+impl TableLayout {
     /// Gets the column location for a row and column
     pub fn get_cell_location(&self, row: usize, column: usize) -> Option<Point> {
         if row >= self.rows.len() {
@@ -85,8 +85,8 @@ impl GridLayout {
         Some(Point { x, y })
     }
 
-    pub fn row_iter(&self) -> GridRowPlacementIter {
-        GridRowPlacementIter {
+    pub fn row_iter(&self) -> TableRowPlacementIter {
+        TableRowPlacementIter {
             table_rect: self,
             current_row: 0,
         }

@@ -1,5 +1,6 @@
 mod group;
 pub use group::*;
+use size::Size;
 mod ops;
 pub mod shapes;
 use std::{
@@ -28,13 +29,62 @@ impl From<Rotation> for Object {
         rotation.0.into()
     }
 }
+pub trait HasPosition {
+    fn position(&self) -> Point;
 
+    fn set_position(&mut self, position: Point);
+
+    fn with_position(mut self, position: Point) -> Self
+    where
+        Self: Sized,
+    {
+        self.set_position(position);
+        self
+    }
+}
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub struct Point<P = Pt> {
     /// x position from the bottom left corner in pt
     pub x: P,
     /// y position from the bottom left corner in pt
     pub y: P,
+}
+impl<P> Point<P> {
+    /// Because PDF 0,0 is at the bottom left, this function inverts the y-axis
+    pub fn invert_from_page_size(&self, page_size: Size<P>) -> Point<P>
+    where
+        P: Copy + Sub<P, Output = P>,
+    {
+        Point::<P> {
+            x: self.x,
+            y: page_size.height - self.y,
+        }
+    }
+}
+impl Sub<Point> for Point {
+    type Output = Point;
+    fn sub(self, other: Point) -> Point {
+        Point {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+impl From<Point> for taffy::Point<f32> {
+    fn from(point: Point) -> taffy::Point<f32> {
+        taffy::Point {
+            x: point.x.0,
+            y: point.y.0,
+        }
+    }
+}
+impl From<taffy::Point<f32>> for Point {
+    fn from(point: taffy::Point<f32>) -> Point {
+        Point {
+            x: Pt(point.x),
+            y: Pt(point.y),
+        }
+    }
 }
 impl<P> Point<P> {
     pub fn new(x: P, y: P) -> Self {
@@ -80,18 +130,7 @@ where
         }
     }
 }
-impl<P> Sub<Point<P>> for Point<P>
-where
-    P: Sub<Output = P>,
-{
-    type Output = Point<P>;
-    fn sub(self, other: Point<P>) -> Point<P> {
-        Point {
-            x: self.x - other.x,
-            y: self.y - other.y,
-        }
-    }
-}
+
 impl<P> From<Point<P>> for Vec<Object>
 where
     P: Into<Object>,

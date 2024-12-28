@@ -13,7 +13,12 @@ use crate::{
 use state::TextBlockState;
 use tracing::debug;
 
-use super::{operation_keys, OperationWriter, PdfOperation, PdfOperationType};
+use super::{
+    layouts::LayoutItemType,
+    operation_keys,
+    size::{RenderSize, Size},
+    HasPosition, OperationWriter, PdfOperation, PdfOperationType,
+};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TextBlock {
@@ -29,6 +34,29 @@ pub struct TextBlock {
     /// This is just the starting position of the text block
     pub position: Point,
 }
+impl LayoutItemType for TextBlock {
+    fn calculate_size(&self, document: &crate::document::PdfDocument) -> Result<Size, TuxPdfError> {
+        self.content.render_size(document, &self.style)
+    }
+    fn render(
+        self,
+        _: &crate::document::PdfDocument,
+        page: &mut crate::page::PdfPage,
+    ) -> Result<(), TuxPdfError> {
+        page.add_operation(self.into());
+        Ok(())
+    }
+}
+impl HasPosition for TextBlock {
+    fn position(&self) -> Point {
+        self.position
+    }
+
+    fn set_position(&mut self, position: Point) {
+        self.position = position;
+    }
+}
+
 impl From<String> for TextBlock {
     fn from(text: String) -> Self {
         Self {
@@ -52,6 +80,14 @@ impl TextBlock {
     }
     pub fn with_position(mut self, position: Point) -> Self {
         self.position = position;
+        self
+    }
+    pub fn with_font(mut self, font: crate::document::FontRef) -> Self {
+        self.style.font_ref = font;
+        self
+    }
+    pub fn with_font_size(mut self, font_size: Pt) -> Self {
+        self.style.font_size = font_size;
         self
     }
     fn writer_many(

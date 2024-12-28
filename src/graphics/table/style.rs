@@ -1,7 +1,7 @@
 use crate::{
     graphics::{
         color::{Color, BLACK_RGB, GRAY_RGB},
-        layouts::grid::{GridColumnMaxWidth, GridColumnMinWidth, GridStyleGroup},
+        layouts::table::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
         styles::Padding,
         PartialOrFullTextStyle, TextStyle,
     },
@@ -20,9 +20,9 @@ pub struct CellStyle {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ColumnStyle {
     /// Will set the maximum width of the column
-    pub max_width: Option<GridColumnMaxWidth>,
+    pub max_width: Option<TableColumnMaxWidth>,
     /// Will set the minimum width of the column
-    pub min_width: Option<GridColumnMinWidth>,
+    pub min_width: Option<TableColumnMinWidth>,
     /// Cell Styling Options
     pub cell_styles: Option<CellStyle>,
 }

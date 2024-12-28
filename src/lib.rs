@@ -1,4 +1,5 @@
 use document::{FontRef, ResourceNotRegistered};
+use graphics::layouts::LayoutError;
 use thiserror::Error;
 
 pub mod document;
@@ -29,6 +30,8 @@ pub enum TuxPdfError {
     ImageCrateError(#[from] image::ImageError),
     #[error("Unsupported image color type: {0:?}")]
     UnsupportedImageColorType(image::ColorType),
+    #[error(transparent)]
+    LayoutError(#[from] LayoutError),
 }
 impl From<FontRef> for TuxPdfError {
     fn from(font_ref: FontRef) -> Self {
@@ -39,5 +42,26 @@ pub type TuxPdfResult<T> = Result<T, TuxPdfError>;
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use crate::document::PdfDocument;
+
+    pub fn create_test_document(name: &str) -> crate::document::PdfDocument {
+        let mut doc = crate::document::PdfDocument::new(name);
+        doc.metadata.info.author = Some("tux-pdf tests".to_string());
+        doc.metadata.info.creator = Some("tux-pdf tests".to_string());
+        doc.metadata.info.creation_date =
+            Some(time::OffsetDateTime::now_local().unwrap_or(time::OffsetDateTime::now_utc()));
+        doc
+    }
+
+    pub fn save_pdf_doc(doc: PdfDocument, test_name: &str) -> anyhow::Result<()> {
+        let save_location = destination_dir().join(format!("{}.pdf", test_name));
+        let mut file = std::fs::File::create(save_location)?;
+        let mut pdf = doc.write_to_lopdf_document()?;
+
+        pdf.save_to(&mut file)?;
+
+        Ok(())
+    }
+
     include!("../tests/test_utils_external.rs");
 }

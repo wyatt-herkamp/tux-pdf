@@ -4,7 +4,10 @@ use crate::{
     TuxPdfError,
 };
 
-use super::{ctm::CurTransMat, size::Size, PdfOperation, PdfOperationType, Point};
+use super::{
+    ctm::CurTransMat, layouts::LayoutItemType, size::Size, HasPosition, PdfOperation,
+    PdfOperationType, Point,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ImageTransform<U = Pt> {
@@ -56,6 +59,36 @@ pub struct ImageRotation<U = Px> {
 pub struct PdfImageOperation {
     pub image: XObjectId,
     pub transform: ImageTransform<Pt>,
+}
+impl LayoutItemType for PdfImageOperation {
+    fn calculate_size(&self, document: &crate::document::PdfDocument) -> Result<Size, TuxPdfError> {
+        let Some(x_object_ref) = document.resources.xobjects.get_xobject(&self.image) else {
+            return Err(ResourceNotRegistered::from(self.image.clone()).into());
+        };
+        let XObjectRef::Image(image) = x_object_ref else {
+            return Err(TuxPdfError::InvalidReference("Image"));
+        };
+
+        let scaled_size = self.scaled_size(image.image.size);
+        Ok(scaled_size)
+    }
+    fn render(
+        self,
+        _: &crate::document::PdfDocument,
+        page: &mut crate::page::PdfPage,
+    ) -> Result<(), TuxPdfError> {
+        page.add_operation(self.into());
+        Ok(())
+    }
+}
+impl HasPosition for PdfImageOperation {
+    fn position(&self) -> Point {
+        self.transform.position
+    }
+
+    fn set_position(&mut self, position: Point) {
+        self.transform.position = position;
+    }
 }
 impl From<PdfImageOperation> for PdfOperation {
     fn from(image_op: PdfImageOperation) -> Self {

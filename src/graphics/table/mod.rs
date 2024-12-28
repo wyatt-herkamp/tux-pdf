@@ -11,13 +11,13 @@ mod style;
 pub use style::*;
 mod rows;
 use super::{
-    layouts::grid::{GridLayout, GridStyleGroup},
+    layouts::table::{GridStyleGroup, TableLayout},
     size::{RenderSize, Size},
     styles::Margin,
     TextBlock, TextStyle,
 };
-use crate::graphics::layouts::grid::{
-    GridColumnRules, GridLayoutBuilder, GridStyles, NewGridColumm,
+use crate::graphics::layouts::table::{
+    GridColumnRules, GridStyles, NewTableColumn, TableLayoutBuilder,
 };
 pub use rows::*;
 use thiserror::Error;
@@ -129,7 +129,7 @@ impl Table {
     fn size_of_header_columns(
         &self,
         document: &mut PdfDocument,
-    ) -> Result<Vec<NewGridColumm>, TuxPdfError> {
+    ) -> Result<Vec<NewTableColumn>, TuxPdfError> {
         let style = self.header_text_styles();
         self.columns
             .iter()
@@ -139,7 +139,7 @@ impl Table {
                     min_width: column.styles.as_ref().and_then(|s| s.min_width),
                     max_width: column.styles.as_ref().and_then(|s| s.max_width),
                 };
-                Ok(NewGridColumm {
+                Ok(NewTableColumn {
                     initial_size: size,
                     rules,
                 })
@@ -156,8 +156,8 @@ impl Table {
         for (column_index, column) in self.columns.iter_mut().enumerate() {
             if let Some(max_width) = column.styles.as_ref().and_then(|s| s.max_width) {
                 let max_width = match max_width {
-                    super::layouts::grid::GridColumnMaxWidth::Fixed(pt) => pt,
-                    super::layouts::grid::GridColumnMaxWidth::Percentage(percentage) => {
+                    super::layouts::table::TableColumnMaxWidth::Fixed(pt) => pt,
+                    super::layouts::table::TableColumnMaxWidth::Percentage(percentage) => {
                         available_size.width * percentage
                     }
                 };
@@ -201,7 +201,7 @@ impl Table {
         // Initialize the first grid builder
         let column_sizes = self.size_of_header_columns(document)?;
 
-        let mut grid_builder = GridLayoutBuilder::new(
+        let mut grid_builder = TableLayoutBuilder::new(
             &first_page.0,
             grid_styles.clone(),
             column_sizes,
@@ -231,7 +231,7 @@ impl Table {
 
                 let header_column_sizes = self.size_of_header_columns(document)?;
 
-                grid_builder = GridLayoutBuilder::new(
+                grid_builder = TableLayoutBuilder::new(
                     &page_rules,
                     grid_styles.clone(),
                     header_column_sizes,
@@ -322,5 +322,5 @@ impl Table {
 struct InternalTablePage {
     page: PdfPage,
     rows: Vec<Row>,
-    grid_layout: GridLayout,
+    grid_layout: TableLayout,
 }

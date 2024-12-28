@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, From)]
-pub enum GridColumnMinWidth {
+pub enum TableColumnMinWidth {
     /// The column width is fixed and will not be recalculated
     Fixed(Pt),
     /// The column width is a percentage of the total width
@@ -21,7 +21,7 @@ pub enum GridColumnMinWidth {
     AutoFill,
 }
 #[derive(Debug, Clone, Copy, PartialEq, From)]
-pub enum GridColumnMaxWidth {
+pub enum TableColumnMaxWidth {
     /// The column width is fixed and will not be recalculated
     Fixed(Pt),
     /// The column width is a percentage of the available width
@@ -29,8 +29,8 @@ pub enum GridColumnMaxWidth {
 }
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GridColumnRules {
-    pub min_width: Option<GridColumnMinWidth>,
-    pub max_width: Option<GridColumnMaxWidth>,
+    pub min_width: Option<TableColumnMinWidth>,
+    pub max_width: Option<TableColumnMaxWidth>,
 }
 /// A column in the table
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -63,7 +63,7 @@ pub(crate) struct GridBuilderRow {
     pub styles: Option<GridStyleGroup>,
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct GridRow {
+pub struct TableRow {
     pub content_y: Pt,
     pub border_line_y: Pt,
     pub height: Pt,
@@ -71,7 +71,7 @@ pub struct GridRow {
 }
 /// A new Grid Column based on the the size of the column header text
 #[derive(Debug, Clone, PartialEq)]
-pub struct NewGridColumm {
+pub struct NewTableColumn {
     pub initial_size: Size,
     pub rules: GridColumnRules,
 }

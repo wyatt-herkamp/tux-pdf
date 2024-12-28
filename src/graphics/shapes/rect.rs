@@ -143,6 +143,12 @@ impl PdfOperationType for OutlineRect {
     }
 }
 impl OutlineRect {
+    pub fn new_from_bottom_left(position: impl Into<Point>, size: impl Into<Size>) -> Self {
+        let size = size.into();
+
+        let mut position = position.into();
+        Self { position, size }
+    }
     pub fn media_box(&self) -> OutlineRect {
         *self
     }

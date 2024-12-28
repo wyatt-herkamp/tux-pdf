@@ -6,7 +6,7 @@ use tux_pdf::{
     document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
     graphics::{
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
-        layouts::grid::{GridColumnMaxWidth, GridColumnMinWidth, GridStyleGroup},
+        layouts::table::{TableColumnMaxWidth, TableColumnMinWidth, GridStyleGroup},
         styles::{Margin, Padding},
         table::{Column, Row, RowStyles, Table, TablePageRules, TableStyles, TableValue},
         TextStyle,
@@ -25,7 +25,7 @@ fn table_test() -> anyhow::Result<()> {
         Column::from("Order Type"),
         Column::from("Order Size"),
         Column::from("Work Order"),
-        Column::from("Notes").with_min_width(GridColumnMinWidth::AutoFill),
+        Column::from("Notes").with_min_width(TableColumnMinWidth::AutoFill),
     ];
     let even_row_style = RowStyles {
         background_color: Some(GRAY_RGB),
@@ -122,13 +122,13 @@ fn table_test() -> anyhow::Result<()> {
 fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
     test_utils::init_logger();
     let columns: Vec<_> = vec![
-        Column::from("Timestamp").with_max_width(GridColumnMaxWidth::Fixed(100f32.pt())),
+        Column::from("Timestamp").with_max_width(TableColumnMaxWidth::Fixed(100f32.pt())),
         Column::from("Order Number"),
         Column::from("Customer Name"),
         Column::from("Order Type"),
         Column::from("Order Size"),
         Column::from("Work Order"),
-        Column::from("Notes").with_min_width(GridColumnMinWidth::AutoFill),
+        Column::from("Notes").with_min_width(TableColumnMinWidth::AutoFill),
     ];
     let even_row_style = RowStyles {
         background_color: Some(GRAY_RGB),

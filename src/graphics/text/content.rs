@@ -264,12 +264,13 @@ impl TextBlockContent {
 }
 impl RenderSize for TextBlockContent {
     type Settings = TextStyle;
+    type Error = TuxPdfError;
 
     fn render_size(
         &self,
         document: &crate::document::PdfDocument,
         settings: &TextStyle,
-    ) -> Result<Size, crate::TuxPdfError> {
+    ) -> Result<Size, TuxPdfError> {
         let state = TextBlockState::new(&document.resources, settings)?;
 
         let mut size: Size = Size::default();

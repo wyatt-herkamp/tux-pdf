@@ -68,5 +68,9 @@ operation_keys!(
     /// Restore Graphics State
     RestoreGraphicsState => "Q",
     /// Set Line Width
-    SetLineWidth => "w"
+    SetLineWidth => "w",
+    /// Current Transformation Matrix
+    CurrentTransformationMatrix => "cm",
+    /// Render a xobject
+    PaintXObject => "Do"
 );

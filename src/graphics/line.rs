@@ -3,8 +3,8 @@ use lopdf::Object;
 use crate::{units::Pt, utils::copy_into};
 
 use super::{
-    color::Color, points_to_object_array, OperationKeys, PathConstructionOperators,
-    PathPaintOperationKeys, PdfOperationType, Point,
+    color::Color, points_to_object_array, PathConstructionOperators, PathPaintOperationKeys,
+    PdfOperationType, Point,
 };
 
 #[derive(Debug, Clone, PartialEq, Default)]

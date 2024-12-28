@@ -16,6 +16,12 @@ pub fn init_logger() {
     error!("This is an error message");
 }
 #[allow(dead_code)]
+pub fn images_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("images")
+}
+#[allow(dead_code)]
 pub fn fonts_dir() -> std::path::PathBuf {
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

@@ -5,6 +5,7 @@ use crate::{
         size::{RenderSize, Size},
         TextBlockContent, TextStyle,
     },
+    TuxPdfError,
 };
 
 use super::{CellStyle, ColumnStyle, RowStyles};
@@ -125,12 +126,12 @@ impl Row {
         &self,
         document: &PdfDocument,
         default_text_style: &TextStyle,
-    ) -> Result<Vec<Size>, crate::TuxPdfError> {
+    ) -> Result<Vec<Size>, TuxPdfError> {
         self.values
             .iter()
             .map(|value| match &value.value {
                 TableValue::Text(text) => (*text).render_size(document, default_text_style),
-                TableValue::BlankSpace => ().render_size(document, &()),
+                TableValue::BlankSpace => Ok(().render_size(document, &()).unwrap()),
             })
             .collect()
     }

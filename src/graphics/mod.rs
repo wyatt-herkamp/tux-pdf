@@ -14,11 +14,13 @@ pub mod color;
 pub mod layouts;
 pub mod size;
 pub mod table;
-use crate::units::Pt;
+use crate::units::{Mm, Pt};
+pub mod image;
 mod line;
 pub mod text;
 pub use line::*;
 pub use text::*;
+pub mod ctm;
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Rotation(pub i64);
 impl From<Rotation> for Object {
@@ -27,12 +29,44 @@ impl From<Rotation> for Object {
     }
 }
 
-#[derive(Debug, Copy, Default, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub struct Point<P = Pt> {
     /// x position from the bottom left corner in pt
     pub x: P,
     /// y position from the bottom left corner in pt
     pub y: P,
+}
+impl<P> Point<P> {
+    pub fn new(x: P, y: P) -> Self {
+        Self { x, y }
+    }
+}
+impl Point<Pt> {
+    pub fn into_mm(self) -> Point<Mm> {
+        Point {
+            x: self.x.into(),
+            y: self.y.into(),
+        }
+    }
+}
+impl Point<Mm> {
+    pub fn into_pt(self) -> Point<Pt> {
+        Point {
+            x: self.x.into(),
+            y: self.y.into(),
+        }
+    }
+}
+impl<U> Default for Point<U>
+where
+    U: Default,
+{
+    fn default() -> Self {
+        Self {
+            x: U::default(),
+            y: U::default(),
+        }
+    }
 }
 impl<P> Add<Point<P>> for Point<P>
 where

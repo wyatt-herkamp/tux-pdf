@@ -25,7 +25,7 @@ use crate::{
     TuxPdfError,
 };
 
-use super::ObjectMapType;
+use super::{IdType, ObjectMapType};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GlyphMetrics {
@@ -57,6 +57,22 @@ impl GlyphMetrics {
 /// A unique identifier for a font.
 #[derive(Debug, PartialEq, Clone, Eq, PartialOrd, Ord)]
 pub struct FontId(pub(crate) String);
+
+impl IdType for FontId {
+    fn new_random() -> Self {
+        Self(crate::utils::random::random_character_string(32))
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+    fn into_string(self) -> String {
+        self.0
+    }
+    fn resource_category(&self) -> &'static str {
+        "Font"
+    }
+}
 impl TryFrom<String> for FontId {
     type Error = TuxPdfError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -76,17 +92,13 @@ impl TryFrom<&str> for FontId {
         Self::try_from(value.to_owned())
     }
 }
-impl Default for FontId {
-    fn default() -> Self {
-        Self(crate::utils::random::random_character_string(32))
-    }
-}
 
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct PdfFontMap {
     pub(crate) map: BTreeMap<FontId, ParsedFont>,
     pub(crate) registered_builtin_fonts: HashSet<BuiltinFont>,
 }
+
 impl ObjectMapType for PdfFontMap {
     type IdType = FontId;
     fn has_id(&self, id: &Self::IdType) -> bool {
@@ -114,10 +126,7 @@ impl PdfFontMap {
         font: impl Into<ExternalFont>,
     ) -> Result<FontRef, TuxPdfError> {
         let font = font.into();
-        let font_id = FontId::default();
-        if self.has_id(&font_id) {
-            return Err(TuxPdfError::ObjectCollectionError(font_id.0));
-        }
+        let font_id = self.new_id();
         self.map.insert(
             font_id.clone(),
             ParsedFont {

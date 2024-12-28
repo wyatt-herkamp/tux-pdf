@@ -1,4 +1,4 @@
-use document::{BuiltinFont, FontId, FontRef};
+use document::{FontRef, ResourceNotRegistered};
 use thiserror::Error;
 
 pub mod document;
@@ -9,10 +9,10 @@ pub mod units;
 pub(crate) mod utils;
 #[derive(Debug, Error)]
 pub enum TuxPdfError {
-    #[error("Font not registered: {0:?}")]
-    FontNotRegistered(FontId),
-    #[error("Builtin font not registered: {0:?}")]
-    BuiltinFontNotRegistered(BuiltinFont),
+    #[error(transparent)]
+    ResourceNotRegistered(#[from] ResourceNotRegistered),
+    #[error("Invalid Reference. Expected reference to {0}")]
+    InvalidReference(&'static str),
     #[error("No pages created")]
     NoPagesCreated,
     #[error("Invalid object id: {0}")]
@@ -25,13 +25,14 @@ pub enum TuxPdfError {
     FontParseError(#[from] ttf_parser::FaceParsingError),
     #[error(transparent)]
     TableError(#[from] graphics::table::TableError),
+    #[error(transparent)]
+    ImageCrateError(#[from] image::ImageError),
+    #[error("Unsupported image color type: {0:?}")]
+    UnsupportedImageColorType(image::ColorType),
 }
 impl From<FontRef> for TuxPdfError {
     fn from(font_ref: FontRef) -> Self {
-        match font_ref {
-            FontRef::External(font_id) => TuxPdfError::FontNotRegistered(font_id),
-            FontRef::Builtin(builtin_font) => TuxPdfError::BuiltinFontNotRegistered(builtin_font),
-        }
+        ResourceNotRegistered::from(font_ref).into()
     }
 }
 pub type TuxPdfResult<T> = Result<T, TuxPdfError>;

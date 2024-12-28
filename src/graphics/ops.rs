@@ -6,7 +6,9 @@ mod keys;
 use crate::{document::PdfResources, TuxPdfError};
 pub use keys::*;
 
-use super::{group::GraphicItems, GraphicStyles, TextBlock, TextOperations};
+use super::{
+    group::GraphicItems, image::PdfImageOperation, GraphicStyles, TextBlock, TextOperations,
+};
 /// Operations that can occur in a PDF page
 #[derive(Debug, Clone, PartialEq)]
 pub enum PdfOperation {
@@ -14,6 +16,7 @@ pub enum PdfOperation {
     NewLine,
     Graphics(GraphicItems),
     Styles(GraphicStyles),
+    Image(PdfImageOperation),
 }
 
 impl PdfOperationType for PdfOperation {
@@ -34,6 +37,9 @@ impl PdfOperationType for PdfOperation {
             }
             PdfOperation::Styles(styles) => {
                 styles.write(resources, writer)?;
+            }
+            PdfOperation::Image(pdf_image_operation) => {
+                pdf_image_operation.write(resources, writer)?;
             }
         }
         Ok(())
@@ -60,6 +66,14 @@ impl OperationWriter {
     }
     pub fn operations(self) -> Vec<Operation> {
         self.operations
+    }
+    #[inline(always)]
+    pub fn save_graphics_state(&mut self) {
+        self.push_empty_op(OperationKeys::SaveGraphicsState);
+    }
+    #[inline(always)]
+    pub fn restore_graphics_state(&mut self) {
+        self.push_empty_op(OperationKeys::RestoreGraphicsState);
     }
 }
 

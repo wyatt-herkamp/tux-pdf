@@ -2,8 +2,8 @@ use std::ops::{Add, Sub};
 
 use crate::{
     graphics::{
-        size::Size, OperationKeys, OperationWriter, PaintMode, PathConstructionOperators,
-        PathPaintOperationKeys, PdfOperationType, Point, Polygon, StraightLine, WindingOrder,
+        size::Size, OperationWriter, PaintMode, PathConstructionOperators, PathPaintOperationKeys,
+        PdfOperationType, Point, Polygon, StraightLine, WindingOrder,
     },
     units::{Pt, UnitType},
     utils::copy_into,

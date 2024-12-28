@@ -23,6 +23,11 @@ macro_rules! basic_trait_impl {
                 write!(f, "{}", self.0)
             }
         }
+        impl From<$type> for $inner {
+            fn from(val: $type) -> Self {
+                val.0
+            }
+        }
     };
 }
 macro_rules! serde_transparent {
@@ -238,7 +243,14 @@ self_math!(Px(i64));
 serde_transparent!(Px(i64));
 into_lo_object!(Px);
 basic_trait_impl!(Px(i64));
-
+impl Px {
+    pub fn into_pt_with_dpi(self, dpi: f32) -> Pt {
+        Pt((self.0 as f32) / dpi * 72.0)
+    }
+    pub fn into_mm_with_dpi(self, dpi: f32) -> Mm {
+        Mm((self.0 as f32) / dpi * 25.4)
+    }
+}
 pub trait UnitType {
     fn mm(&self) -> Mm;
     fn pt(&self) -> Pt;

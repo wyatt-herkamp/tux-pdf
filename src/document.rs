@@ -51,15 +51,20 @@ impl PdfDocument {
         &mut self.resources.fonts
     }
 
-    pub fn write_to_lopdf_document(self) -> TuxPdfResult<lopdf::Document> {
+    pub fn add_xobject<T>(&mut self, xobject: T) -> XObjectId
+    where
+        T: Into<XObject>,
+    {
+        self.resources.xobjects.add_xobject(xobject.into())
+    }
+
+    pub fn write_to_lopdf_document(mut self) -> TuxPdfResult<lopdf::Document> {
         let mut writer = DocumentWriter::default();
         {
             let info_dict: Dictionary = self.metadata.info.into();
             let info_dict_id = writer.insert_object(info_dict.into());
             writer.info_dict = Some(info_dict_id);
         }
-        let fonts = self.resources.fonts.dictionary(&mut writer);
-        writer.fonts(fonts);
 
         for page in self.pages {
             let content = operations_to_content(&self.resources, page.ops);
@@ -80,6 +85,13 @@ impl PdfDocument {
 
             writer.new_page(page.into_dictionary());
         }
+
+        let fonts = self.resources.fonts.dictionary(&mut writer);
+
+        writer.fonts(fonts);
+
+        let xobjects = self.resources.xobjects.dictionary(&mut writer)?;
+        writer.xobjects = Some(xobjects);
 
         writer.finish()
     }
@@ -102,6 +114,7 @@ pub struct PageAnnotMap {
 
 pub struct DocumentWriter {
     fonts: Option<Dictionary>,
+    xobjects: Option<Dictionary>,
     pages: Vec<ObjectId>,
     pages_id: Option<ObjectId>,
     resources_id: Option<ObjectId>,
@@ -113,6 +126,7 @@ impl Default for DocumentWriter {
     fn default() -> Self {
         Self {
             fonts: None,
+            xobjects: None,
             document: lopdf::Document::with_version("1.7"),
             pages: Vec::new(),
             pages_id: None,
@@ -160,6 +174,7 @@ impl DocumentWriter {
     pub(crate) fn finish(self) -> TuxPdfResult<lopdf::Document> {
         let Self {
             fonts,
+            xobjects,
             pages,
             pages_id,
             resources_id,
@@ -170,7 +185,10 @@ impl DocumentWriter {
         let pages_id = pages_id.ok_or(TuxPdfError::NoPagesCreated)?;
         document.set_object(pages_id, PagesObject { kids: pages }.into_dictionary());
         if let Some(resources_id) = resources_id {
-            let resources = Resources { font: fonts };
+            let resources = Resources {
+                font: fonts,
+                xobject: xobjects,
+            };
             document.set_object(resources_id, resources.into_dictionary());
         }
         let catalog_object = catalog_extras

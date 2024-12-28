@@ -104,16 +104,20 @@ impl PdfDirectoryType for CatalogObject {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Resources {
     pub font: Option<Dictionary>,
+    pub xobject: Option<Dictionary>,
 }
 impl PdfDirectoryType for Resources {
     fn dictionary_type_key() -> &'static str {
         "Resources"
     }
     fn into_dictionary(self) -> Dictionary {
-        let Resources { font } = self;
+        let Resources { font, xobject } = self;
         let mut dict = Dictionary::new();
         if let Some(font) = font {
             dict.set("Font", font);
+        }
+        if let Some(xobject) = xobject {
+            dict.set("XObject", xobject);
         }
         dict
     }

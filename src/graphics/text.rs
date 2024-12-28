@@ -29,7 +29,31 @@ pub struct TextBlock {
     /// This is just the starting position of the text block
     pub position: Point,
 }
+impl From<String> for TextBlock {
+    fn from(text: String) -> Self {
+        Self {
+            content: text.into(),
+            ..Default::default()
+        }
+    }
+}
+impl From<&str> for TextBlock {
+    fn from(text: &str) -> Self {
+        Self {
+            content: text.into(),
+            ..Default::default()
+        }
+    }
+}
 impl TextBlock {
+    pub fn with_style(mut self, style: TextStyle) -> Self {
+        self.style = style;
+        self
+    }
+    pub fn with_position(mut self, position: Point) -> Self {
+        self.position = position;
+        self
+    }
     fn writer_many(
         lines: Vec<TextLine>,
         current_state: TextBlockState,

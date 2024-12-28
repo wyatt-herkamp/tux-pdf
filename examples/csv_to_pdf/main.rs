@@ -20,7 +20,7 @@ use tux_pdf::{
 static ROBOTO_FONT: &[u8] = include_bytes!("../../tests/fonts/Roboto/Roboto-Regular.ttf");
 #[derive(Debug, Clone, Parser)]
 struct CsvToPdf {
-    cvs_file: PathBuf,
+    csv_file: PathBuf,
     #[clap(short, long)]
     output_file: Option<PathBuf>,
 }
@@ -42,8 +42,8 @@ fn width_per_column(number_of_columns: usize) -> Pt {
 }
 fn main() -> anyhow::Result<()> {
     let args = CsvToPdf::parse();
-    if !args.cvs_file.exists() {
-        eprintln!("The file {:?} does not exist", args.cvs_file);
+    if !args.csv_file.exists() {
+        eprintln!("The file {:?} does not exist", args.csv_file);
         std::process::exit(1);
     }
     let output_file = if let Some(output_file) = args.output_file {
@@ -51,11 +51,11 @@ fn main() -> anyhow::Result<()> {
     } else {
         PathBuf::from("table.pdf")
     };
-    let (columns, rows) = read_csv(&args.cvs_file)?;
+    let (columns, rows) = read_csv(&args.csv_file)?;
 
     let mut doc = PdfDocument::new(format!(
         "Table from {}",
-        args.cvs_file.file_name().unwrap().to_string_lossy()
+        args.csv_file.file_name().unwrap().to_string_lossy()
     ));
 
     doc.metadata.info.producer = Some("tux-pdf/examples/cvs-to-pdf".to_string());
@@ -94,9 +94,9 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<Column>, Vec<Row>)> {
-    let cvs_file = File::open(file)?;
+    let csv_file = File::open(file)?;
 
-    let mut cvs_reader = csv::Reader::from_reader(cvs_file);
+    let mut cvs_reader = csv::Reader::from_reader(csv_file);
     if !cvs_reader.has_headers() {
         eprintln!("The CSV file must have headers");
         std::process::exit(1);

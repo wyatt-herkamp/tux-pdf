@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use derive_more::derive::From;
 use lopdf::Object;
+mod image;
+pub use image::*;
 use tracing::error;
 
 use crate::document::IccProfileId;

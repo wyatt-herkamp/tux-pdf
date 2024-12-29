@@ -18,6 +18,8 @@ pub enum ResourceNotRegistered {
     BuiltinFontNotRegistered(BuiltinFont),
     #[error("XObject not registered: {0:?}")]
     XObjectId(XObjectId),
+    #[error("Layer not registered: {0:?}")]
+    LayerId(LayerId),
 }
 impl From<FontRef> for ResourceNotRegistered {
     fn from(font_ref: FontRef) -> Self {
@@ -129,3 +131,4 @@ macro_rules! object_id_type {
 
 object_id_type!(FontId);
 object_id_type!(XObjectId);
+object_id_type!(LayerId);

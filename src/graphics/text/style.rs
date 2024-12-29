@@ -4,7 +4,6 @@ use crate::{
     document::{BuiltinFont, FontRef, FontRenderSizeParams, PdfResources},
     graphics::{
         color::{Color, ColorWriter, HasColorParams},
-        size::Size,
         OperationWriter, PdfObjectType,
     },
     units::Pt,

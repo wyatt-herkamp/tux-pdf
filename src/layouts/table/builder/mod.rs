@@ -1,6 +1,6 @@
-mod builder;
+mod builder_internal;
 
-pub use builder::*;
+pub use builder_internal::*;
 use tracing::{debug, error};
 pub use types::*;
 

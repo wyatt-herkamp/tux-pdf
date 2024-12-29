@@ -9,10 +9,12 @@ use crate::{
     page::PdfPage,
     TuxPdfError, TuxPdfResult,
 };
+use ahash::{HashMap, HashMapExt};
+use either::Either;
 use lopdf::{content::Content, dictionary, Dictionary, Object, ObjectId, Stream};
 pub use meta::*;
 pub use resources::*;
-use types::{Page, PagesObject, PdfDirectoryType, Resources};
+use types::{OptionalContentProperties, Page, PagesObject, PdfDirectoryType, Resources};
 pub mod types;
 pub struct PdfDocument {
     /// Metadata about the document (author, info, XMP metadata, etc.)
@@ -75,16 +77,44 @@ impl PdfDocument {
             let info_dict_id = writer.insert_object(info_dict.into());
             writer.info_dict = Some(info_dict_id);
         }
-
+        for (layer_id, layer) in self.resources.layers.map.iter() {
+            let optional_content_group = layer.create_ocg_dictionary();
+            let ocg_id = writer.insert_object(optional_content_group.into_dictionary().into());
+            writer.layers.insert(layer_id.clone(), ocg_id);
+        }
         for page in self.pages {
-            let content = operations_to_content(&self.resources, page.ops);
+            let mut operation_writer = OperationWriter::default();
+            for layer in page.layers {
+                let Some(layer_content) = self.resources.layers.clone_layer_content(&layer) else {
+                    return Err(ResourceNotRegistered::LayerId(layer).into());
+                };
+                operation_writer.start_layer(layer);
+                operations_to_content(&self.resources, layer_content, &mut operation_writer);
+                operation_writer.end_layer();
+            }
+            operations_to_content(&self.resources, page.ops, &mut operation_writer);
+            let OperationWriter { operations, layers } = operation_writer;
+            let content = Content { operations };
             let content_id =
                 writer.insert_object(Stream::new(dictionary! {}, content.encode().unwrap()).into());
-
+            let resources_id = if layers.is_empty() {
+                writer.shared_resources_id()
+            } else {
+                let mut properties = Dictionary::new();
+                for layer in layers {
+                    properties.set(layer.0.as_str(), writer.layers[&layer]);
+                }
+                let resources = Resources {
+                    font: Some(Either::Left(writer.font_id())),
+                    xobject: Some(Either::Left(writer.xobjects_id())),
+                    properties: Some(properties),
+                };
+                writer.insert_object(resources.into_dictionary().into())
+            };
             let page = Page {
                 parent_id: writer.pages_id(),
                 contents_id: content_id,
-                resources_id: writer.resources_id(),
+                resources_id,
                 media_box: page.media_box.to_array(),
                 crop_box: page.crop_box.map(|cb| cb.to_array()),
                 art_box: page.art_box.map(|ab| ab.to_array()),
@@ -101,21 +131,26 @@ impl PdfDocument {
         writer.fonts(fonts);
 
         let xobjects = self.resources.xobjects.dictionary(&mut writer)?;
-        writer.xobjects = Some(xobjects);
+        writer.xobjects(xobjects);
 
         writer.finish()
+    }
+    pub fn create_layer(&mut self, name: &str) -> LayerId {
+        self.resources.layers.create_layer(name)
     }
     pub fn add_page(&mut self, page: PdfPage) {
         self.pages.push(page);
     }
 }
 
-fn operations_to_content(resources: &PdfResources, operations: Vec<PdfObject>) -> Content {
-    let mut writer = OperationWriter::default();
+fn operations_to_content(
+    resources: &PdfResources,
+    operations: Vec<PdfObject>,
+    writer: &mut OperationWriter,
+) {
     for operation in operations {
-        operation.write(resources, &mut writer).unwrap();
+        operation.write(resources, writer).unwrap();
     }
-    writer.into()
 }
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct PageAnnotMap {
@@ -123,9 +158,11 @@ pub struct PageAnnotMap {
 }
 
 pub struct DocumentWriter {
-    fonts: Option<Dictionary>,
-    xobjects: Option<Dictionary>,
+    layers: HashMap<LayerId, ObjectId>,
+    fonts: Option<ObjectId>,
+    xobjects: Option<ObjectId>,
     pages: Vec<ObjectId>,
+
     pages_id: Option<ObjectId>,
     resources_id: Option<ObjectId>,
     info_dict: Option<ObjectId>,
@@ -135,6 +172,7 @@ pub struct DocumentWriter {
 impl Default for DocumentWriter {
     fn default() -> Self {
         Self {
+            layers: HashMap::new(),
             fonts: None,
             xobjects: None,
             document: lopdf::Document::with_version("1.7"),
@@ -148,7 +186,12 @@ impl Default for DocumentWriter {
 }
 impl DocumentWriter {
     pub fn fonts(&mut self, fonts: Dictionary) {
-        self.fonts = Some(fonts);
+        let font_id = self.font_id();
+        self.document.set_object(font_id, fonts);
+    }
+    pub fn xobjects(&mut self, xobjects: Dictionary) {
+        let xobjects_id = self.xobjects_id();
+        self.document.set_object(xobjects_id, xobjects);
     }
     pub fn insert_object(&mut self, object: lopdf::Object) -> lopdf::ObjectId {
         self.document.add_object(object)
@@ -171,8 +214,26 @@ impl DocumentWriter {
             pages_id
         }
     }
+    pub fn font_id(&mut self) -> ObjectId {
+        if let Some(font_id) = self.fonts {
+            font_id
+        } else {
+            let font_id = self.new_object_id();
+            self.fonts = Some(font_id);
+            font_id
+        }
+    }
+    pub fn xobjects_id(&mut self) -> ObjectId {
+        if let Some(xobjects_id) = self.xobjects {
+            xobjects_id
+        } else {
+            let xobjects_id = self.new_object_id();
+            self.xobjects = Some(xobjects_id);
+            xobjects_id
+        }
+    }
     /// Gets or creates a resources object id
-    pub fn resources_id(&mut self) -> ObjectId {
+    pub fn shared_resources_id(&mut self) -> ObjectId {
         if let Some(resources_id) = self.resources_id {
             resources_id
         } else {
@@ -191,19 +252,29 @@ impl DocumentWriter {
             info_dict,
             catalog_extras,
             mut document,
+            layers,
         } = self;
         let pages_id = pages_id.ok_or(TuxPdfError::NoPagesCreated)?;
         document.set_object(pages_id, PagesObject { kids: pages }.into_dictionary());
         if let Some(resources_id) = resources_id {
             let resources = Resources {
-                font: fonts,
-                xobject: xobjects,
+                font: fonts.map(Either::Left),
+                xobject: xobjects.map(Either::Left),
+                ..Default::default()
             };
             document.set_object(resources_id, resources.into_dictionary());
         }
-        let catalog_object = catalog_extras
+
+        let mut catalog_object = catalog_extras
             .unwrap_or_default()
             .create_catalog_object(pages_id);
+        if !layers.is_empty() {
+            let oc_properties = OptionalContentProperties {
+                ocgs: layers.into_values().collect(),
+                ..Default::default()
+            };
+            catalog_object.oc_properties = Some(oc_properties);
+        }
         // Create Catalog object
         let catalog_id = document.add_object(catalog_object.into_dictionary());
         // Point the Root key to the Pages object

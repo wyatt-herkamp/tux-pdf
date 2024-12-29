@@ -3,7 +3,10 @@ use lopdf::{
     Object,
 };
 mod keys;
-use crate::{document::PdfResources, TuxPdfError};
+use crate::{
+    document::{LayerId, PdfResources},
+    TuxPdfError,
+};
 pub use keys::*;
 
 use super::{group::GraphicItems, image::PdfImage, GraphicStyles, TextBlock, TextOperations};
@@ -46,7 +49,9 @@ impl PdfObjectType for PdfObject {
 
 #[derive(Debug, Clone, Default)]
 pub struct OperationWriter {
-    operations: Vec<Operation>,
+    pub(crate) operations: Vec<Operation>,
+    /// The index within will be used to determine its id in the resources
+    pub(crate) layers: Vec<LayerId>,
 }
 impl From<OperationWriter> for Content {
     fn from(writer: OperationWriter) -> Self {
@@ -72,6 +77,17 @@ impl OperationWriter {
     #[inline(always)]
     pub fn restore_graphics_state(&mut self) {
         self.push_empty_op(OperationKeys::RestoreGraphicsState);
+    }
+
+    pub fn start_layer(&mut self, layer_id: LayerId) {
+        self.layers.push(layer_id.clone());
+        self.add_operation(
+            OperationKeys::BeginLayer,
+            vec![Object::Name("OC".as_bytes().to_vec()), layer_id.into()],
+        );
+    }
+    pub fn end_layer(&mut self) {
+        self.push_empty_op(OperationKeys::EndLayer);
     }
 }
 /// A type that can be written to a pdf containing a few different types of objects

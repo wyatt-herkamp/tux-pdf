@@ -7,7 +7,10 @@ use crate::{
     utils::{strum_into_name, IsEmpty},
 };
 
-use super::{conformance::PdfConformance, types::CatalogObject};
+use super::{
+    conformance::PdfConformance,
+    types::{CatalogObject, OptionalContentProperties},
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PdfMetadata {
@@ -148,6 +151,7 @@ impl CatalogInfo {
             page_layout,
             language,
             page_mode,
+            ..Default::default()
         }
     }
 }

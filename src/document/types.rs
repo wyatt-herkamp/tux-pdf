@@ -1,6 +1,7 @@
 //! PDF Document Types.
 //!
 //! Structures that represent different Dictionary objects in a PDF document.
+use either::Either;
 use lopdf::{dictionary, Dictionary, Object, ObjectId};
 mod font;
 pub use font::*;
@@ -74,6 +75,8 @@ pub struct CatalogObject {
     pub page_mode: PageMode,
     /// Lang
     pub language: Option<String>,
+
+    pub oc_properties: Option<OptionalContentProperties>,
 }
 impl PdfDirectoryType for CatalogObject {
     fn dictionary_type_key() -> &'static str {
@@ -85,6 +88,7 @@ impl PdfDirectoryType for CatalogObject {
             page_layout: layout,
             language,
             page_mode,
+            oc_properties,
         } = self;
         let mut catalog = dictionary! {
             "Type" => Self::dictionary_type_key(),
@@ -92,7 +96,9 @@ impl PdfDirectoryType for CatalogObject {
             "PageLayout" => layout,
             "PageMode" => page_mode,
         };
-
+        if let Some(oc_properties) = oc_properties {
+            catalog.set("OCProperties", oc_properties.into_dictionary());
+        }
         if let Some(language) = language {
             catalog.set("Lang", language);
         }
@@ -101,25 +107,43 @@ impl PdfDirectoryType for CatalogObject {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Resources {
-    pub font: Option<Dictionary>,
-    pub xobject: Option<Dictionary>,
+    pub font: Option<Either<ObjectId, Dictionary>>,
+    pub xobject: Option<Either<ObjectId, Dictionary>>,
+    pub properties: Option<Dictionary>,
 }
 impl PdfDirectoryType for Resources {
     fn dictionary_type_key() -> &'static str {
         "Resources"
     }
     fn into_dictionary(self) -> Dictionary {
-        let Resources { font, xobject } = self;
+        let Resources {
+            font,
+            xobject,
+            properties,
+        } = self;
         let mut dict = Dictionary::new();
         if let Some(font) = font {
-            dict.set("Font", font);
+            dict.set("Font", either_to_object(font));
         }
         if let Some(xobject) = xobject {
-            dict.set("XObject", xobject);
+            dict.set("XObject", either_to_object(xobject));
+        }
+        if let Some(properties) = properties {
+            dict.set("Properties", properties);
         }
         dict
+    }
+}
+fn either_to_object<L, R>(either: Either<L, R>) -> Object
+where
+    L: Into<Object>,
+    R: Into<Object>,
+{
+    match either {
+        Either::Left(left) => left.into(),
+        Either::Right(right) => right.into(),
     }
 }
 
@@ -177,5 +201,64 @@ impl PdfDirectoryType for Page {
             dictionary.set("Rotate", rotation);
         }
         dictionary
+    }
+}
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct OptionalContentGroup {
+    //    pub intent: Option<Vec<String>>,
+    // TODO Intent and Usage
+    pub name: String,
+}
+impl PdfDirectoryType for OptionalContentGroup {
+    fn dictionary_type_key() -> &'static str {
+        "OCG"
+    }
+    fn into_dictionary(self) -> Dictionary {
+        let OptionalContentGroup { name } = self;
+        let mut dict = Dictionary::new();
+        dict.set("Type", Self::dictionary_type_key());
+        dict.set("Name", Object::string_literal(name));
+        dict
+    }
+}
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct OptionalContentProperties {
+    pub ocgs: Vec<ObjectId>,
+    pub d: OptionalContentConfiguration,
+}
+impl PdfDirectoryType for OptionalContentProperties {
+    fn dictionary_type_key() -> &'static str {
+        "OCProperties"
+    }
+    fn into_dictionary(self) -> Dictionary {
+        let OptionalContentProperties { ocgs, d } = self;
+        let ocgs_array = Object::Array(ocgs.into_iter().map(Object::from).collect());
+        let main_config: Dictionary = d.into();
+        let mut dict = Dictionary::new();
+        dict.set("OCGs", ocgs_array);
+        dict.set("D", main_config);
+        dict
+    }
+}
+#[derive(Debug, Clone, PartialEq, Default)]
+
+pub struct OptionalContentConfiguration {
+    pub ocgs: Vec<ObjectId>,
+    pub base_state: Dictionary,
+    pub on: Vec<ObjectId>,
+    pub off: Vec<ObjectId>,
+}
+
+impl From<OptionalContentConfiguration> for Dictionary {
+    fn from(occ: OptionalContentConfiguration) -> Self {
+        let OptionalContentConfiguration {
+            ocgs,
+            base_state,
+            on,
+            off,
+        } = occ;
+        let mut dict = Dictionary::new();
+
+        dict
     }
 }

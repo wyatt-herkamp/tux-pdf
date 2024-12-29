@@ -1,5 +1,5 @@
 use crate::{
-    document::LayerInternalId,
+    document::LayerId,
     graphics::{shapes::OutlineRect, size::Size, LayerType, PdfObject},
 };
 
@@ -16,7 +16,7 @@ pub struct PdfPage {
     /// You can think of this as the "content" of the page
     pub ops: Vec<PdfObject>,
     /// Layers that are present on this page
-    pub layers: Vec<LayerInternalId>,
+    pub layers: Vec<LayerId>,
 }
 impl LayerType for PdfPage {
     fn add_to_layer(&mut self, object: PdfObject) -> Result<(), crate::TuxPdfError> {
@@ -53,7 +53,7 @@ impl PdfPage {
         self
     }
     /// Add a layer to the page
-    pub fn add_layer(&mut self, layer: LayerInternalId) {
+    pub fn add_layer(&mut self, layer: LayerId) {
         self.layers.push(layer);
     }
 }

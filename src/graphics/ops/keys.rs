@@ -72,5 +72,7 @@ operation_keys!(
     /// Current Transformation Matrix
     CurrentTransformationMatrix => "cm",
     /// Render a xobject
-    PaintXObject => "Do"
+    PaintXObject => "Do",
+    BeginLayer => "BDC",
+    EndLayer => "EMC"
 );

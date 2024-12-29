@@ -29,7 +29,7 @@ derive_more = { version = "1", features = ["from", "into"] }
 
 ahash = "0.8"
 
-taffy = { version = "0.7" }
+taffy = { version = "0.7", optional = true }
 [dev-dependencies]
 anyhow = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -37,5 +37,6 @@ clap = { version = "4", features = ["derive"] }
 csv = "1"
 image = { version = "0.25", features = ["default-formats"] }
 [features]
-default = ["svg"]
+default = ["svg", "export-taffy", "taffy"]
 svg = ["resvg"]
+export-taffy = ["taffy"]

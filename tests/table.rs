@@ -6,10 +6,12 @@ use tux_pdf::{
     document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
     graphics::{
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
-        layouts::table::{TableColumnMaxWidth, TableColumnMinWidth, GridStyleGroup},
         styles::{Margin, Padding},
-        table::{Column, Row, RowStyles, Table, TablePageRules, TableStyles, TableValue},
         TextStyle,
+    },
+    layouts::table::{
+        builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
+        Column, Row, RowStyles, Table, TablePageRules, TableStyles, TableValue,
     },
     page::{page_sizes::A4, PdfPage},
     units::UnitType,
@@ -111,7 +113,7 @@ fn table_test() -> anyhow::Result<()> {
         margin: Some(Margin::left_and_right(10f32.pt(), 10f32.pt())),
     };
     table.render(&mut doc, (page_rules, page))?;
-    let mut pdf = doc.write_to_lopdf_document()?;
+    let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(destination_dir().join("table.pdf"))?;
     pdf.save_to(&mut file)?;
 
@@ -220,7 +222,7 @@ fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
         margin: Some(Margin::left_and_right(10f32.pt(), 10f32.pt())),
     };
     table.render(&mut doc, (page_rules, page))?;
-    let mut pdf = doc.write_to_lopdf_document()?;
+    let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(
         destination_dir().join("table_test_large_column_but_limited_space.pdf"),
     )?;

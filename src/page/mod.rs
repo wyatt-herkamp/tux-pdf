@@ -1,6 +1,6 @@
 use crate::{
     document::LayerInternalId,
-    graphics::{shapes::OutlineRect, size::Size, PdfOperation},
+    graphics::{shapes::OutlineRect, size::Size, LayerType, PdfObject},
 };
 
 pub mod page_sizes;
@@ -14,11 +14,16 @@ pub struct PdfPage {
     pub crop_box: Option<OutlineRect>,
     pub rotate: Option<i64>,
     /// You can think of this as the "content" of the page
-    pub ops: Vec<PdfOperation>,
+    pub ops: Vec<PdfObject>,
     /// Layers that are present on this page
     pub layers: Vec<LayerInternalId>,
 }
-
+impl LayerType for PdfPage {
+    fn add_to_layer(&mut self, object: PdfObject) -> Result<(), crate::TuxPdfError> {
+        self.ops.push(object);
+        Ok(())
+    }
+}
 impl PdfPage {
     /// Create a new page with the given size
     pub fn new_from_page_size(size: Size) -> Self {
@@ -46,11 +51,6 @@ impl PdfPage {
     pub fn with_trim_box(mut self, trim_box: OutlineRect) -> Self {
         self.trim_box = Some(trim_box);
         self
-    }
-
-    /// Add an operation to the page
-    pub fn add_operation(&mut self, operation: PdfOperation) {
-        self.ops.push(operation);
     }
     /// Add a layer to the page
     pub fn add_layer(&mut self, layer: LayerInternalId) {

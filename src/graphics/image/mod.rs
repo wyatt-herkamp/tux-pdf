@@ -1,17 +1,18 @@
 use crate::{
     document::{ResourceNotRegistered, XObjectId, XObjectRef},
+    layouts::LayoutItemType,
     units::{Pt, Px},
     TuxPdfError,
 };
 
 use super::{
-    ctm::CurTransMat, layouts::LayoutItemType, size::Size, HasPosition, PdfOperation,
-    PdfOperationType, Point,
+    primitives::ctm::CurTransMat, size::Size, HasPosition, LayerType, PdfObject, PdfObjectType,
+    PdfPosition,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ImageTransform<U = Pt> {
-    pub position: Point<U>,
+    pub position: PdfPosition<U>,
     /// Rotate (counter-clockwise) around a point, in degree angles
     pub rotate: Option<ImageRotation>,
     pub scale_x: Option<f32>,
@@ -39,7 +40,7 @@ where
 {
     fn default() -> Self {
         Self {
-            position: Point::default(),
+            position: PdfPosition::default(),
             rotate: None,
             scale_x: None,
             scale_y: None,
@@ -56,12 +57,15 @@ pub struct ImageRotation<U = Px> {
 
 /// This is a struct used to show an image on the page/layer of the PDF
 #[derive(Debug, Clone, PartialEq)]
-pub struct PdfImageOperation {
+pub struct PdfImage {
     pub image: XObjectId,
     pub transform: ImageTransform<Pt>,
 }
-impl LayoutItemType for PdfImageOperation {
-    fn calculate_size(&self, document: &crate::document::PdfDocument) -> Result<Size, TuxPdfError> {
+impl LayoutItemType for PdfImage {
+    fn calculate_size(
+        &mut self,
+        document: &crate::document::PdfDocument,
+    ) -> Result<Size, TuxPdfError> {
         let Some(x_object_ref) = document.resources.xobjects.get_xobject(&self.image) else {
             return Err(ResourceNotRegistered::from(self.image.clone()).into());
         };
@@ -72,30 +76,33 @@ impl LayoutItemType for PdfImageOperation {
         let scaled_size = self.scaled_size(image.image.size);
         Ok(scaled_size)
     }
-    fn render(
+
+    fn render<L: LayerType>(
         self,
         _: &crate::document::PdfDocument,
-        page: &mut crate::page::PdfPage,
-    ) -> Result<(), TuxPdfError> {
-        page.add_operation(self.into());
-        Ok(())
+        page: &mut L,
+    ) -> Result<(), TuxPdfError>
+    where
+        Self: Sized,
+    {
+        page.add_to_layer(self.into())
     }
 }
-impl HasPosition for PdfImageOperation {
-    fn position(&self) -> Point {
+impl HasPosition for PdfImage {
+    fn position(&self) -> PdfPosition {
         self.transform.position
     }
 
-    fn set_position(&mut self, position: Point) {
+    fn set_position(&mut self, position: PdfPosition) {
         self.transform.position = position;
     }
 }
-impl From<PdfImageOperation> for PdfOperation {
-    fn from(image_op: PdfImageOperation) -> Self {
+impl From<PdfImage> for PdfObject {
+    fn from(image_op: PdfImage) -> Self {
         Self::Image(image_op)
     }
 }
-impl From<XObjectId> for PdfImageOperation {
+impl From<XObjectId> for PdfImage {
     fn from(image_ref: XObjectId) -> Self {
         Self {
             image: image_ref,
@@ -103,7 +110,7 @@ impl From<XObjectId> for PdfImageOperation {
         }
     }
 }
-impl PdfOperationType for PdfImageOperation {
+impl PdfObjectType for PdfImage {
     fn write(
         self,
         resources: &crate::document::PdfResources,
@@ -127,7 +134,7 @@ impl PdfOperationType for PdfImageOperation {
     }
 }
 
-impl PdfImageOperation {
+impl PdfImage {
     pub fn new(image_ref: XObjectId) -> Self {
         Self {
             image: image_ref,
@@ -137,7 +144,7 @@ impl PdfImageOperation {
     pub fn dpi(&self) -> f32 {
         self.transform.dpi
     }
-    pub fn with_position(mut self, position: Point<Pt>) -> Self {
+    pub fn with_position(mut self, position: PdfPosition<Pt>) -> Self {
         self.transform.position = position;
         self
     }
@@ -158,7 +165,7 @@ impl PdfImageOperation {
         self.set_dpi(dpi);
         self
     }
-    pub fn set_position(&mut self, position: Point<Pt>) {
+    pub fn set_position(&mut self, position: PdfPosition<Pt>) {
         self.transform.position = position;
     }
 

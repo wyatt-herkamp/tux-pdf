@@ -1,13 +1,15 @@
 use crate::{
     graphics::{
         color::{Color, BLACK_RGB, GRAY_RGB},
-        layouts::table::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
         styles::Padding,
         PartialOrFullTextStyle, TextStyle,
     },
+    layouts::table::{GridStyleGroup, TableColumnMaxWidth},
     units::{Pt, UnitType},
     utils::Merge,
 };
+
+use super::builder::TableColumnMinWidth;
 /// A cell is where the area where the row and column intersect
 ///
 /// Currently cell styles are not supported

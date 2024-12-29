@@ -16,7 +16,7 @@ use std::borrow::Cow;
 
 pub(crate) use copy_into;
 
-use crate::graphics::PdfOperationType;
+use crate::graphics::PdfObjectType;
 pub trait IsEmpty {
     fn is_empty(&self) -> bool;
 }
@@ -92,10 +92,10 @@ impl<T: PartialStruct> PartailOrFull<T> {
         }
     }
 }
-impl<T: PartialStruct> PdfOperationType for PartailOrFull<T>
+impl<T: PartialStruct> PdfObjectType for PartailOrFull<T>
 where
-    T: PdfOperationType,
-    T::FullStruct: PdfOperationType,
+    T: PdfObjectType,
+    T::FullStruct: PdfObjectType,
 {
     fn write(
         self,

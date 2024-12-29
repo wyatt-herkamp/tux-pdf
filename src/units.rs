@@ -10,7 +10,6 @@
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::num::FpCategory;
-use taffy::TrackSizingFunction;
 
 macro_rules! basic_trait_impl {
     ($type:ident($inner:ty)) => {
@@ -320,26 +319,3 @@ unit_type_core_types!(i64, i32, i16, i8, u64, u32, u16, u8);
 pub struct Percentage(pub f32);
 
 basic_trait_impl!(Percentage(f32));
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
-pub enum UnitOrPercentage<U = Pt> {
-    Unit(U),
-    Percentage(Percentage),
-}
-impl From<Pt> for UnitOrPercentage {
-    fn from(val: Pt) -> Self {
-        UnitOrPercentage::Unit(val)
-    }
-}
-impl From<Percentage> for UnitOrPercentage {
-    fn from(val: Percentage) -> Self {
-        UnitOrPercentage::Percentage(val)
-    }
-}
-impl From<UnitOrPercentage> for TrackSizingFunction {
-    fn from(value: UnitOrPercentage) -> Self {
-        match value {
-            UnitOrPercentage::Unit(unit) => taffy::prelude::length(unit.0),
-            UnitOrPercentage::Percentage(percentage) => taffy::prelude::percent(percentage.0),
-        }
-    }
-}

@@ -5,13 +5,13 @@ use tux_pdf::{
     document::{static_ttf_parser::StaticTtfFace, PdfDocument},
     graphics::{
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
-        layouts::table::{TableColumnMaxWidth, GridStyleGroup},
         styles::Margin,
-        table::{
-            Column, ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles,
-            TableValueWithStyle,
-        },
         TextStyle,
+    },
+    layouts::table::builder::{GridStyleGroup, TableColumnMaxWidth},
+    layouts::table::{
+        Column, ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles,
+        TableValueWithStyle,
     },
     page::{page_sizes::A4, PdfPage},
     units::{Pt, UnitType},
@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
 
     let first_page = table_page(&mut doc)?;
     table.render(&mut doc, first_page)?;
-    let mut pdf = doc.write_to_lopdf_document()?;
+    let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(output_file)?;
     pdf.save_to(&mut file)?;
     Ok(())

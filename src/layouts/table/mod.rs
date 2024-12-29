@@ -2,28 +2,29 @@ use std::{borrow::Cow, mem};
 
 use crate::{
     document::PdfDocument,
+    graphics::{
+        size::{RenderSize, Size},
+        LayerType, Margin, TextBlock, TextStyle,
+    },
     page::{page_sizes::A4, PdfPage},
     units::Pt,
     utils::Merge,
     TuxPdfError,
 };
+pub mod builder;
 mod style;
+use builder::{GridStyleGroup, TableColumnMaxWidth, TableLayout};
 pub use style::*;
 mod rows;
-use super::{
-    layouts::table::{GridStyleGroup, TableLayout},
-    size::{RenderSize, Size},
-    styles::Margin,
-    TextBlock, TextStyle,
-};
-use crate::graphics::layouts::table::{
+
+use crate::layouts::table::builder::{
     GridColumnRules, GridStyles, NewTableColumn, TableLayoutBuilder,
 };
 pub use rows::*;
 use thiserror::Error;
 use tracing::{debug, info, Level};
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, PartialEq, Error)]
 pub enum TableError {
     #[error("Row is too wide for the table")]
     RowTooWide,
@@ -156,8 +157,8 @@ impl Table {
         for (column_index, column) in self.columns.iter_mut().enumerate() {
             if let Some(max_width) = column.styles.as_ref().and_then(|s| s.max_width) {
                 let max_width = match max_width {
-                    super::layouts::table::TableColumnMaxWidth::Fixed(pt) => pt,
-                    super::layouts::table::TableColumnMaxWidth::Percentage(percentage) => {
+                    TableColumnMaxWidth::Fixed(pt) => pt,
+                    TableColumnMaxWidth::Percentage(percentage) => {
                         available_size.width * percentage
                     }
                 };
@@ -269,7 +270,7 @@ impl Table {
             if tracing::enabled!(Level::TRACE) {
                 tracing::trace!(?graphics_items);
             }
-            page.add_operation(graphics_items.into());
+            page.add_to_layer(graphics_items.into())?;
             let mut row_iter = grid_layout.row_iter();
             {
                 // Render head row
@@ -286,7 +287,7 @@ impl Table {
                             style: header_styles.clone().into_owned(),
                         })
                 {
-                    page.add_operation(text.into());
+                    page.add_to_layer(text.into())?;
                 }
             }
             for (row, locations) in rows.into_iter().zip(row_iter) {
@@ -306,7 +307,7 @@ impl Table {
                                 position: location,
                                 style: row_text_style.clone(),
                             };
-                            page.add_operation(text.into());
+                            page.add_to_layer(text.into())?;
                         }
                         _ => {}
                     }

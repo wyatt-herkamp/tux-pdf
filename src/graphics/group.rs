@@ -3,8 +3,9 @@ use derive_more::derive::From;
 use crate::{document::PdfResources, TuxPdfError};
 
 use super::{
+    primitives::{Line, StraightLine},
     shapes::{OutlineRect, PaintedRect},
-    GraphicStyles, OperationKeys, OperationWriter, PdfOperation, PdfOperationType,
+    GraphicStyles, OperationKeys, OperationWriter, PdfObject, PdfObjectType,
 };
 
 /// By default every graphic item you add to be rendered will end with a call to restore the graphics state.
@@ -56,7 +57,7 @@ impl GraphicsGroup {
         self.items.push(item.into());
     }
 }
-impl PdfOperationType for GraphicsGroup {
+impl PdfObjectType for GraphicsGroup {
     fn write(
         self,
         resources: &PdfResources,
@@ -79,22 +80,22 @@ impl PdfOperationType for GraphicsGroup {
 
 #[derive(Debug, Clone, PartialEq, From)]
 pub enum GraphicItems {
-    StraightLine(super::StraightLine),
-    Line(super::Line),
+    StraightLine(StraightLine),
+    Line(Line),
     Rectangle(PaintedRect),
     OutlineRectangle(OutlineRect),
     Group(GraphicsGroup),
 }
 
-impl<I> From<I> for PdfOperation
+impl<I> From<I> for PdfObject
 where
     I: Into<GraphicItems>,
 {
     fn from(item: I) -> Self {
-        PdfOperation::Graphics(item.into())
+        PdfObject::Graphics(item.into())
     }
 }
-impl PdfOperationType for GraphicItems {
+impl PdfObjectType for GraphicItems {
     fn write(
         self,
         resources: &PdfResources,

@@ -2,8 +2,12 @@ use std::ops::{Add, Sub};
 
 use crate::{
     graphics::{
-        size::Size, OperationWriter, PaintMode, PathConstructionOperators, PathPaintOperationKeys,
-        PdfOperationType, Point, Polygon, StraightLine, WindingOrder,
+        primitives::{
+            PaintMode, PathConstructionOperators, PathPaintOperationKeys, Polygon, StraightLine,
+            WindingOrder,
+        },
+        size::Size,
+        OperationWriter, PdfObjectType, PdfPosition,
     },
     units::{Pt, UnitType},
     utils::copy_into,
@@ -11,17 +15,17 @@ use crate::{
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct PaintedRect<U = Pt> {
     /// Lower left corner of the rectangle
-    pub position: Point<U>,
+    pub position: PdfPosition<U>,
     pub size: Size<U>,
     pub winding_order: WindingOrder,
     pub paint_mode: PaintMode,
 }
 
-impl<U> From<(Point<U>, Size<U>)> for PaintedRect<U>
+impl<U> From<(PdfPosition<U>, Size<U>)> for PaintedRect<U>
 where
     U: Default,
 {
-    fn from((position, size): (Point<U>, Size<U>)) -> Self {
+    fn from((position, size): (PdfPosition<U>, Size<U>)) -> Self {
         Self {
             position,
             size,
@@ -32,7 +36,7 @@ where
 
 impl PaintedRect {
     pub fn new(x: Pt, y: Pt, width: Pt, height: Pt) -> Self {
-        let position = Point { x, y };
+        let position = PdfPosition { x, y };
         let size = Size { width, height };
         Self {
             position,
@@ -51,10 +55,10 @@ impl PaintedRect {
     /// Creates a new rectangle with the center point being the center of the rectangle.
     ///
     /// Then it calculates the rest of the points based on the center point and the width and height.
-    pub fn new_rectangle(width: Pt, height: Pt, center_point: Point) -> Self {
-        let Point { x, y } = center_point;
+    pub fn new_rectangle(width: Pt, height: Pt, center_point: PdfPosition) -> Self {
+        let PdfPosition { x, y } = center_point;
 
-        let position = Point {
+        let position = PdfPosition {
             x: x - width / 2f32.pt(),
             y: y - height / 2f32.pt(),
         };
@@ -65,9 +69,9 @@ impl PaintedRect {
             ..Default::default()
         }
     }
-    pub fn new_square(size: Pt, center_point: Point) -> Self {
-        let Point { x, y } = center_point;
-        let position = Point {
+    pub fn new_square(size: Pt, center_point: PdfPosition) -> Self {
+        let PdfPosition { x, y } = center_point;
+        let position = PdfPosition {
             x: x - size / 2f32.pt(),
             y: y - size / 2f32.pt(),
         };
@@ -83,14 +87,14 @@ impl PaintedRect {
     }
 }
 
-impl PdfOperationType for PaintedRect {
+impl PdfObjectType for PaintedRect {
     fn write(
         self,
         _: &crate::document::PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
         let Size { width, height } = self.size;
-        let Point { x, y } = self.position;
+        let PdfPosition { x, y } = self.position;
         writer.add_operation(
             PathConstructionOperators::PathRectangle,
             vec![x.into(), y.into(), width.into(), height.into()],
@@ -129,10 +133,10 @@ pub trait RectangleStyleType {
 /// A rectangle that does not have any fill just an outline
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
 pub struct OutlineRect<U = Pt> {
-    pub position: Point<U>,
+    pub position: PdfPosition<U>,
     pub size: Size<U>,
 }
-impl PdfOperationType for OutlineRect {
+impl PdfObjectType for OutlineRect {
     fn write(
         self,
         resources: &crate::document::PdfResources,
@@ -143,7 +147,7 @@ impl PdfOperationType for OutlineRect {
     }
 }
 impl OutlineRect {
-    pub fn new_from_bottom_left(position: impl Into<Point>, size: impl Into<Size>) -> Self {
+    pub fn new_from_bottom_left(position: impl Into<PdfPosition>, size: impl Into<Size>) -> Self {
         let size = size.into();
 
         let position = position.into();
@@ -153,9 +157,9 @@ impl OutlineRect {
         *self
     }
     /// Creates a rectangle where the squares center is the center_point
-    pub fn new_square(size: Pt, center_point: Point) -> Self {
-        let Point { x, y } = center_point;
-        let position = Point {
+    pub fn new_square(size: Pt, center_point: PdfPosition) -> Self {
+        let PdfPosition { x, y } = center_point;
+        let position = PdfPosition {
             x: x - size / 2f32.pt(),
             y: y - size / 2f32.pt(),
         };
@@ -193,20 +197,20 @@ impl From<OutlineRect> for Polygon {
 }
 
 impl<U> OutlineRect<U> {
-    pub fn lower_left(&self) -> Point<U>
+    pub fn lower_left(&self) -> PdfPosition<U>
     where
         U: Copy,
     {
         self.position
     }
 
-    pub fn upper_right(&self) -> Point<U>
+    pub fn upper_right(&self) -> PdfPosition<U>
     where
         U: Copy + std::ops::Add<Output = U>,
     {
-        let Point { x, y } = self.position;
+        let PdfPosition { x, y } = self.position;
         let Size { width, height } = self.size;
-        Point {
+        PdfPosition {
             x: x + width,
             y: y + height,
         }
@@ -217,12 +221,12 @@ impl<U> OutlineRect<U> {
     {
         let size = Size { width, height };
         Self {
-            position: Point::default(),
+            position: PdfPosition::default(),
             size,
         }
     }
 
-    fn gen_points_and_start(&self) -> (Point<U>, Vec<Point<U>>)
+    fn gen_points_and_start(&self) -> (PdfPosition<U>, Vec<PdfPosition<U>>)
     where
         U: Copy + Sub<Output = U> + Add<Output = U> + Default,
     {
@@ -232,7 +236,7 @@ impl<U> OutlineRect<U> {
 
 impl OutlineRect {
     pub fn to_array(&self) -> Vec<lopdf::Object> {
-        let Point { x, y } = self.position;
+        let PdfPosition { x, y } = self.position;
         let Size { width, height } = self.size;
         vec![
             (x.0.round() as i64).into(),
@@ -257,52 +261,55 @@ where
     U: Into<T>,
 {
     fn from(value: OutlineRect<U>) -> Self {
-        let Point { x, y } = value.position;
+        let PdfPosition { x, y } = value.position;
         let Size { width, height } = value.size;
         vec![x.into(), y.into(), width.into(), height.into()]
     }
 }
 
 fn gen_start_and_points_from_position_and_size<U>(
-    position: Point<U>,
+    position: PdfPosition<U>,
     size: Size<U>,
-) -> (Point<U>, Vec<Point<U>>)
+) -> (PdfPosition<U>, Vec<PdfPosition<U>>)
 where
     U: Copy + Sub<Output = U> + Add<Output = U> + Default,
 {
-    let Point { x, y } = position;
+    let PdfPosition { x, y } = position;
     let Size { width, height } = size;
     let top = y;
     let bottom = y - height;
     let left = x;
     let right = x + width;
 
-    let tl = Point { x: left, y: top };
-    let tr = Point { x: right, y: top };
-    let br = Point {
+    let tl = PdfPosition { x: left, y: top };
+    let tr = PdfPosition { x: right, y: top };
+    let br = PdfPosition {
         x: right,
         y: bottom,
     };
-    let bl = Point { x: left, y: bottom };
+    let bl = PdfPosition { x: left, y: bottom };
     (tl, vec![tr, br, bl])
 }
-fn gen_points_from_position_and_size<U>(position: Point<U>, size: Size<U>) -> Vec<Point<U>>
+fn gen_points_from_position_and_size<U>(
+    position: PdfPosition<U>,
+    size: Size<U>,
+) -> Vec<PdfPosition<U>>
 where
     U: Copy + Sub<Output = U> + Add<Output = U> + Default,
 {
-    let Point { x, y } = position;
+    let PdfPosition { x, y } = position;
     let Size { width, height } = size;
     let top = y;
     let bottom = y - height;
     let left = x;
     let right = x + width;
 
-    let tl = Point { x: left, y: top };
-    let tr = Point { x: right, y: top };
-    let br = Point {
+    let tl = PdfPosition { x: left, y: top };
+    let tr = PdfPosition { x: right, y: top };
+    let br = PdfPosition {
         x: right,
         y: bottom,
     };
-    let bl = Point { x: left, y: bottom };
+    let bl = PdfPosition { x: left, y: bottom };
     vec![tl, tr, br, bl]
 }

@@ -1,10 +1,10 @@
 use crate::{
     document::PdfDocument,
     graphics::{
-        layouts::table::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
         size::{RenderSize, Size},
         TextBlockContent, TextStyle,
     },
+    layouts::table::builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
     TuxPdfError,
 };
 

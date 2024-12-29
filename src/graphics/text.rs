@@ -6,7 +6,7 @@ pub use style::*;
 
 use crate::{
     document::PdfResources,
-    graphics::{OperationKeys, Point},
+    graphics::{OperationKeys, PdfPosition},
     units::Pt,
     TuxPdfError,
 };
@@ -14,10 +14,10 @@ use state::TextBlockState;
 use tracing::debug;
 
 use super::{
-    layouts::LayoutItemType,
+    super::layouts::LayoutItemType,
     operation_keys,
     size::{RenderSize, Size},
-    HasPosition, OperationWriter, PdfOperation, PdfOperationType,
+    HasPosition, LayerType, OperationWriter, PdfObject, PdfObjectType,
 };
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -32,27 +32,47 @@ pub struct TextBlock {
     ///
     /// If the text block contains multiple lines,
     /// This is just the starting position of the text block
-    pub position: Point,
+    pub position: PdfPosition,
 }
 impl LayoutItemType for TextBlock {
-    fn calculate_size(&self, document: &crate::document::PdfDocument) -> Result<Size, TuxPdfError> {
+    fn calculate_size(
+        &mut self,
+        document: &crate::document::PdfDocument,
+    ) -> Result<Size, TuxPdfError> {
         self.content.render_size(document, &self.style)
     }
-    fn render(
+    fn can_resize(&self) -> bool {
+        true
+    }
+    fn max_size(&self) -> Option<Size<Option<Pt>>> {
+        Some(Size {
+            width: Some(Pt::default()),
+            height: None,
+        })
+    }
+
+    fn set_max_size(&mut self, size: Size<Option<Pt>>) -> Result<(), TuxPdfError> {
+        self.style.max_width = size.width;
+        Ok(())
+    }
+
+    fn render<L: LayerType>(
         self,
         _: &crate::document::PdfDocument,
-        page: &mut crate::page::PdfPage,
-    ) -> Result<(), TuxPdfError> {
-        page.add_operation(self.into());
-        Ok(())
+        page: &mut L,
+    ) -> Result<(), TuxPdfError>
+    where
+        Self: Sized,
+    {
+        page.add_to_layer(self.into())
     }
 }
 impl HasPosition for TextBlock {
-    fn position(&self) -> Point {
+    fn position(&self) -> PdfPosition {
         self.position
     }
 
-    fn set_position(&mut self, position: Point) {
+    fn set_position(&mut self, position: PdfPosition) {
         self.position = position;
     }
 }
@@ -78,7 +98,7 @@ impl TextBlock {
         self.style = style;
         self
     }
-    pub fn with_position(mut self, position: Point) -> Self {
+    pub fn with_position(mut self, position: PdfPosition) -> Self {
         self.position = position;
         self
     }
@@ -116,7 +136,7 @@ impl TextBlock {
                 debug!(?line_height, "Line Height");
                 writer.add_operation(
                     TextOperations::TextPosition,
-                    Point {
+                    PdfPosition {
                         x: Pt::default(),
                         y: line_height,
                     }
@@ -137,7 +157,7 @@ impl TextBlock {
         Ok(())
     }
 }
-impl PdfOperationType for TextBlock {
+impl PdfObjectType for TextBlock {
     fn write(
         self,
         resources: &PdfResources,
@@ -174,9 +194,9 @@ impl PdfOperationType for TextBlock {
         Ok(())
     }
 }
-impl From<TextBlock> for PdfOperation {
+impl From<TextBlock> for PdfObject {
     fn from(text: TextBlock) -> Self {
-        PdfOperation::TextBlock(text)
+        PdfObject::TextBlock(text)
     }
 }
 
@@ -204,7 +224,7 @@ operation_keys!(TextOperations => {
 mod tests {
     use crate::{
         document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
-        graphics::Point,
+        graphics::{LayerType, PdfPosition},
         page::{page_sizes::A4, PdfPage},
         tests::{fonts_dir, init_logger},
         units::UnitType,
@@ -230,15 +250,15 @@ mod tests {
                 ..Default::default()
             },
             position: A4.top_left_point()
-                + Point {
+                + PdfPosition {
                     x: 10f32.pt(),
                     y: -15f32.pt(),
                 },
         };
         let mut page = PdfPage::new_from_page_size(A4);
-        page.add_operation(text_block.into());
+        page.add_to_layer(text_block.into())?;
         doc.add_page(page);
-        let mut pdf = doc.write_to_lopdf_document()?;
+        let mut pdf = doc.save_to_lopdf_document()?;
 
         let mut file = std::fs::File::create("target/test_max_width.pdf")?;
 

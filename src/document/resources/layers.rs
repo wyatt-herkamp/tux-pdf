@@ -4,7 +4,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-use crate::graphics::PdfOperation;
+use crate::graphics::PdfObject;
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct PdfLayerMap {
@@ -22,7 +22,7 @@ impl Default for LayerInternalId {
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Layer {
     pub name: String,
-    pub operations: Vec<PdfOperation>,
+    pub operations: Vec<PdfObject>,
     pub creator: Option<String>,
     pub intent: LayerIntent,
     pub usage: LayerSubtype,
@@ -35,7 +35,7 @@ impl Layer {
             ..Default::default()
         }
     }
-    pub fn add_operation(&mut self, operation: PdfOperation) {
+    pub fn add_operation(&mut self, operation: PdfObject) {
         self.operations.push(operation);
     }
 

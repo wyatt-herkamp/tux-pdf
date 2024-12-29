@@ -2,11 +2,8 @@ use tracing::{debug, error, warn};
 
 use super::{types::*, TableLayout};
 use crate::{
-    graphics::size::Size,
-    graphics::{
-        table::{TableError, TablePageRules},
-        Point,
-    },
+    graphics::{size::Size, PdfPosition},
+    layouts::table::{TableError, TablePageRules},
     units::{Pt, UnitType},
 };
 
@@ -18,7 +15,7 @@ pub struct TableLayoutBuilder {
     current_y: Pt,
     next_y: Pt,
     current_x: Pt,
-    start: Point,
+    start: PdfPosition,
     max_grid_size: Size,
     styles: GridStyles,
     rows: Vec<GridBuilderRow>,
@@ -58,7 +55,7 @@ impl TableLayoutBuilder {
             current_y: starting_y,
             next_y: starting_y,
             current_x: left,
-            start: Point {
+            start: PdfPosition {
                 x: left,
                 y: starting_y,
             },

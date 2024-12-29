@@ -4,7 +4,8 @@ use crate::{
     document::{BuiltinFont, FontRef, FontRenderSizeParams, PdfResources},
     graphics::{
         color::{Color, ColorWriter, HasColorParams},
-        OperationWriter, PdfOperationType,
+        size::Size,
+        OperationWriter, PdfObjectType,
     },
     units::Pt,
     utils::{IsEmpty, PartailOrFull, PartialStruct},
@@ -60,7 +61,10 @@ pub struct TextStyle {
     ///
     /// But the main use case for this is to put text in a a table cell.
     pub max_width: Option<Pt>,
+    /// Minimum width of text block
+    pub min_width: Option<Pt>,
 }
+
 impl HasColorParams for TextStyle {
     fn set_fill_color(&mut self, color: Color) {
         self.fill_color = Some(color);
@@ -78,7 +82,7 @@ impl HasColorParams for TextStyle {
         self.outline_color.take()
     }
 }
-impl PdfOperationType for TextStyle {
+impl PdfObjectType for TextStyle {
     fn write(
         self,
         resources: &PdfResources,
@@ -139,6 +143,7 @@ impl Default for TextStyle {
             max_width: None,
             character_spacing: None,
             text_rise: None,
+            min_width: None,
         }
     }
 }

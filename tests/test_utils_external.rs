@@ -27,6 +27,9 @@ pub fn fonts_dir() -> std::path::PathBuf {
         .join("tests")
         .join("fonts")
 }
+/// Returns the destination directory for the tests
+///
+/// All output files should be saved to this location
 #[allow(dead_code)]
 pub fn destination_dir() -> std::path::PathBuf {
     let folder = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))

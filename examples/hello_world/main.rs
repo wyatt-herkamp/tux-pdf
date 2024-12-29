@@ -3,8 +3,8 @@ use std::{fs::File, io::Cursor, path::PathBuf};
 use clap::Parser;
 use image::codecs::png::PngDecoder;
 use tux_pdf::{
-    document::{static_ttf_parser::StaticTtfFace, PdfDocument, PdfImage},
-    graphics::{image::PdfImageOperation, text::TextStyle, Point, TextBlock},
+    document::{static_ttf_parser::StaticTtfFace, PdfDocument, PdfXObjectImage},
+    graphics::{image::PdfImage, text::TextStyle, LayerType, PdfPosition, TextBlock},
     page::{page_sizes::A4, PdfPage},
     units::UnitType,
 };
@@ -26,7 +26,7 @@ pub fn main() -> anyhow::Result<()> {
     let roboto_font_ref = doc.resources.fonts.register_external_font(roboto_font)?;
     let image = PngDecoder::new(code_image_reader)?;
 
-    let pdf_image = PdfImage::load_from_decoder(image)?;
+    let pdf_image = PdfXObjectImage::load_from_decoder(image)?;
     let code_image_ref = doc.add_xobject(pdf_image);
 
     let mut page = PdfPage::new_from_page_size(A4);
@@ -37,19 +37,19 @@ pub fn main() -> anyhow::Result<()> {
             font_size: 12.0.pt(),
             ..Default::default()
         })
-        .with_position(Point::new(10.0.pt(), 800.0.pt()));
-    page.add_operation(text.into());
+        .with_position(PdfPosition::new(10.0.pt(), 800.0.pt()));
+    page.add_to_layer(text.into())?;
 
-    let image = PdfImageOperation::new(code_image_ref)
-        .with_position(Point::new(10.0.pt(), 100.0.pt()))
+    let image = PdfImage::new(code_image_ref)
+        .with_position(PdfPosition::new(10.0.pt(), 100.0.pt()))
         .with_scape(2f32, 2f32)
         .with_dpi(300.0);
 
-    page.add_operation(image.into());
+    page.add_to_layer(image.into())?;
 
     doc.add_page(page);
 
-    let mut pdf = doc.write_to_lopdf_document()?;
+    let mut pdf = doc.save_to_lopdf_document()?;
 
     let mut file = File::create(args.output_file)?;
 

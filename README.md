@@ -34,7 +34,7 @@ Early development stage. Not ready for use.
 - [ ] Layers
 - [ ] Layouts and Tables
   - [x] Tables (Works but needs to be improved)
-  - [ ] Grid Layout And Flex Layout using [Taffy](https://github.com/DioxusLabs/taffy)
+  - [x] Grid Layout And Flex Layout using [Taffy](https://github.com/DioxusLabs/taffy)
 - [ ] Wasm Support (Not tested yet would like to have an example web app)
 
 ### Known Issues

@@ -1,3 +1,12 @@
+/*!
+ * PDF Image XObject
+ *
+ * Loading them will require you to use the `image` crate.
+ *
+ * I have all features disabled for the `image` crate as I just need the Decoder type and the DynamicImage type.
+ *
+ * If you would like to add images add the image crate to your `Cargo.toml` file.
+*/
 use image::{ColorType, DynamicImage, GenericImageView, ImageDecoder};
 use lopdf::{dictionary, Object, Stream};
 use utils::pull_alpha_out_of_rgb;
@@ -5,7 +14,7 @@ mod utils;
 use crate::{
     graphics::{
         color::{ColorBits, ColorSpace},
-        ctm::CurTransMat,
+        primitives::ctm::CurTransMat,
         size::Size,
     },
     units::Px,
@@ -13,12 +22,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PdfImage {
-    pub image: PdfXObjectImage,
-    pub mask: Option<PdfXObjectImage>,
+pub struct PdfXObjectImage {
+    pub image: PdfXObjectImageData,
+    pub mask: Option<PdfXObjectImageData>,
 }
 
-impl PdfImage {
+impl PdfXObjectImage {
     /// Load an image from an image decoder
     pub fn load_from_decoder<T>(image: T) -> Result<Self, TuxPdfError>
     where
@@ -30,8 +39,8 @@ impl PdfImage {
 
         let mut image_data = vec![0; num_image_bytes as usize];
         image.read_image(&mut image_data)?;
-        let (image, mask) = PdfXObjectImage::process_image(color_type, image_data, dim)?;
-        Ok(PdfImage { image, mask })
+        let (image, mask) = PdfXObjectImageData::process_image(color_type, image_data, dim)?;
+        Ok(PdfXObjectImage { image, mask })
     }
     /// Load an image from a dynamic image
     pub fn load_from_dynamic_image(image: DynamicImage) -> Result<Self, TuxPdfError> {
@@ -39,12 +48,12 @@ impl PdfImage {
         let (width, height) = image.dimensions();
         let image_data = image.into_bytes();
         let (image, mask) =
-            PdfXObjectImage::process_image(color_type, image_data, (width, height))?;
-        Ok(PdfImage { image, mask })
+            PdfXObjectImageData::process_image(color_type, image_data, (width, height))?;
+        Ok(PdfXObjectImage { image, mask })
     }
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct PdfXObjectImage {
+pub struct PdfXObjectImageData {
     /// Width of the image (original width, not scaled width)
     pub size: Size<Px>,
     /// Color space (Greyscale, RGB, CMYK)
@@ -62,14 +71,14 @@ pub struct PdfXObjectImage {
     /// Default value: Identity matrix (`[1 0 0 1 0 0]`) - used when value is `None`
     pub clipping_bbox: Option<CurTransMat>,
 }
-impl PdfXObjectImage {
+impl PdfXObjectImageData {
     /// Internal function to process image data
     #[doc(hidden)]
     pub fn process_image(
         color_type: ColorType,
         image_data: Vec<u8>,
         dim: (u32, u32),
-    ) -> Result<(PdfXObjectImage, Option<PdfXObjectImage>), TuxPdfError> {
+    ) -> Result<(PdfXObjectImageData, Option<PdfXObjectImageData>), TuxPdfError> {
         let (color_type, image_data, smask_data) = match color_type {
             ColorType::Rgba8 => {
                 let (rgb, alpha) = pull_alpha_out_of_rgb(image_data);
@@ -83,7 +92,7 @@ impl PdfXObjectImage {
             width: Px(dim.0 as i64),
             height: Px(dim.1 as i64),
         };
-        let img = PdfXObjectImage {
+        let img = PdfXObjectImageData {
             size,
             color_space,
             bits_per_component: color_bits,
@@ -93,7 +102,7 @@ impl PdfXObjectImage {
             clipping_bbox: None,
             smask: None,
         };
-        let img_mask = smask_data.map(|smask| PdfXObjectImage {
+        let img_mask = smask_data.map(|smask| PdfXObjectImageData {
             size,
             color_space: ColorSpace::Greyscale,
             bits_per_component: ColorBits::Bit8,

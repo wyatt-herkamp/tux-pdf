@@ -6,9 +6,10 @@ pub use types::*;
 
 use crate::{
     graphics::{
+        primitives::StraightLine,
         shapes::{OutlineRect, PaintedRect, RectangleStyleType},
         size::Size,
-        GraphicItems, GraphicStyles, GraphicsGroup, Point, StraightLine,
+        GraphicItems, GraphicStyles, GraphicsGroup, PdfPosition,
     },
     utils::Merge,
 };
@@ -39,7 +40,7 @@ pub struct TableColumnPlacementIter<'a> {
     current_column: usize,
 }
 impl Iterator for TableColumnPlacementIter<'_> {
-    type Item = Point;
+    type Item = PdfPosition;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_column >= self.table_rect.columns.len() {
@@ -47,7 +48,7 @@ impl Iterator for TableColumnPlacementIter<'_> {
         }
         let column = &self.table_rect.columns[self.current_column];
         let row = &self.table_rect.rows[self.row];
-        let result = Point {
+        let result = PdfPosition {
             x: column.content_x,
             y: row.content_y,
         };
@@ -63,14 +64,14 @@ impl Iterator for TableColumnPlacementIter<'_> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableLayout {
     pub(crate) final_size: Size,
-    pub(crate) start: Point,
+    pub(crate) start: PdfPosition,
     pub(crate) styles: GridStyles,
     pub(crate) rows: Vec<TableRow>,
     pub(crate) columns: Vec<GridColumn>,
 }
 impl TableLayout {
     /// Gets the column location for a row and column
-    pub fn get_cell_location(&self, row: usize, column: usize) -> Option<Point> {
+    pub fn get_cell_location(&self, row: usize, column: usize) -> Option<PdfPosition> {
         if row >= self.rows.len() {
             error!("Row {} is out of bounds", row);
             return None;
@@ -82,7 +83,7 @@ impl TableLayout {
         let x = self.columns[column].content_x;
         let y = self.rows[row].content_y;
 
-        Some(Point { x, y })
+        Some(PdfPosition { x, y })
     }
 
     pub fn row_iter(&self) -> TableRowPlacementIter {
@@ -114,7 +115,7 @@ impl TableLayout {
         }
         let paint_mode = outer_styles.paint_mode()?;
 
-        let position = Point {
+        let position = PdfPosition {
             x: self.start.x,
             y: self.start.y - self.final_size.height,
         };
@@ -156,7 +157,7 @@ impl TableLayout {
                 (None, Some(cell_styles)) => cell_styles.clone(),
                 (None, None) => continue,
             };
-            let position = Point {
+            let position = PdfPosition {
                 x: self.start.x,
                 y: row.border_line_y,
             };
@@ -189,7 +190,7 @@ impl TableLayout {
         let mut cells = Vec::new();
         for row in &self.rows {
             for column in &self.columns {
-                let cell_box_position = Point {
+                let cell_box_position = PdfPosition {
                     x: column.x,
                     y: row.border_line_y + row.height,
                 };

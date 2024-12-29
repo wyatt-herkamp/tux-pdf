@@ -76,7 +76,7 @@ impl ObjectMapType for XObjectMap {
 #[derive(Debug, PartialEq, Clone)]
 pub enum XObject {
     /// Image XObject, for images
-    Image(Box<PdfImage>),
+    Image(Box<PdfXObjectImage>),
     /// Form XObject, NOT A PDF FORM, this just allows repeatable content
     /// on a page
     Form(Box<FormXObject>),
@@ -90,8 +90,8 @@ impl XObject {
     }
 }
 
-impl From<PdfImage> for XObject {
-    fn from(image: PdfImage) -> Self {
+impl From<PdfXObjectImage> for XObject {
+    fn from(image: PdfXObjectImage) -> Self {
         XObject::Image(Box::new(image))
     }
 }
@@ -103,6 +103,6 @@ impl From<FormXObject> for XObject {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum XObjectRef<'resources> {
-    Image(&'resources PdfImage),
+    Image(&'resources PdfXObjectImage),
     Form(&'resources FormXObject),
 }

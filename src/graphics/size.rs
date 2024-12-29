@@ -5,35 +5,51 @@ use std::{
     ops::{Add, AddAssign, Sub},
 };
 
-use taffy::AvailableSpace;
-
 use crate::{
     document::{FontRef, FontType, PdfDocument, ResourceNotRegistered},
-    graphics::{Point, TextStyle},
+    graphics::{PdfPosition, TextStyle},
     units::{Mm, Pt, Px},
 };
 
 use super::shapes::OutlineRect;
-
+/// A size with the unit as [Pt]
+///
+/// Wrapped in an Allowing one of the specified units to be undefined
+pub type SizeOptionPt = Size<Option<Pt>>;
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Size<U = Pt> {
     pub width: U,
     pub height: U,
 }
+#[cfg(feature = "taffy")]
+mod taffy_size {
+    use taffy::{AvailableSpace, Dimension, Size as TaffySize};
 
-impl From<Size> for taffy::Size<AvailableSpace> {
-    fn from(size: Size) -> taffy::Size<AvailableSpace> {
-        taffy::Size {
-            width: AvailableSpace::Definite(size.width.into()),
-            height: AvailableSpace::Definite(size.height.into()),
+    use crate::units::Pt;
+
+    use super::Size;
+    impl From<TaffySize<f32>> for Size<Pt> {
+        fn from(size: TaffySize<f32>) -> Self {
+            Self {
+                width: Pt::from(size.width),
+                height: Pt::from(size.height),
+            }
         }
     }
-}
-impl From<Size> for taffy::Size<taffy::Dimension> {
-    fn from(value: Size) -> Self {
-        Self {
-            width: taffy::Dimension::Length(value.width.into()),
-            height: taffy::Dimension::Length(value.height.into()),
+    impl From<Size> for TaffySize<AvailableSpace> {
+        fn from(size: Size) -> TaffySize<AvailableSpace> {
+            TaffySize {
+                width: AvailableSpace::Definite(size.width.into()),
+                height: AvailableSpace::Definite(size.height.into()),
+            }
+        }
+    }
+    impl From<Size> for TaffySize<Dimension> {
+        fn from(value: Size) -> Self {
+            Self {
+                width: Dimension::Length(value.width.into()),
+                height: Dimension::Length(value.height.into()),
+            }
         }
     }
 }
@@ -130,11 +146,11 @@ impl<U> Size<U> {
     {
         Self::new(self.height, self.width)
     }
-    pub fn top_left_point(&self) -> Point<U>
+    pub fn top_left_point(&self) -> PdfPosition<U>
     where
         U: Default + Copy,
     {
-        Point {
+        PdfPosition {
             x: U::default(),
             y: self.height,
         }
@@ -152,7 +168,7 @@ where
 {
     fn from(size: Size<U>) -> Self {
         OutlineRect {
-            position: Point::default(),
+            position: PdfPosition::default(),
             size,
         }
     }

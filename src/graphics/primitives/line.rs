@@ -1,23 +1,25 @@
 use lopdf::Object;
 
-use crate::{units::Pt, utils::copy_into};
-
-use super::{
-    color::Color, points_to_object_array, PathConstructionOperators, PathPaintOperationKeys,
-    PdfOperationType, Point,
+use crate::{
+    document::PdfResources,
+    graphics::{points_to_object_array, OperationWriter, PdfObjectType},
+    units::Pt,
+    utils::copy_into,
 };
+
+use super::{PathConstructionOperators, PathPaintOperationKeys, PdfPosition};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StraightLine<U = Pt> {
-    pub start: Point<U>,
+    pub start: PdfPosition<U>,
     /// 2D Points for the line. The `bool` indicates whether the next point is a bezier control point.
-    pub points: Vec<Point<U>>,
+    pub points: Vec<PdfPosition<U>>,
     /// Whether the line should automatically be closed
     pub is_closed: bool,
 }
 impl<T> From<Vec<T>> for StraightLine
 where
-    T: Into<Point>,
+    T: Into<PdfPosition>,
 {
     fn from(points: Vec<T>) -> Self {
         let mut points: Vec<_> = points.into_iter().map(Into::into).collect();
@@ -31,10 +33,10 @@ where
 }
 impl<T> From<(Vec<T>, bool)> for StraightLine
 where
-    T: Into<Point>,
+    T: Into<PdfPosition>,
 {
     fn from((points, is_closed): (Vec<T>, bool)) -> Self {
-        let mut points: Vec<Point> = points.into_iter().map(Into::into).collect();
+        let mut points: Vec<PdfPosition> = points.into_iter().map(Into::into).collect();
         let start = points.remove(0);
         Self {
             start,
@@ -43,11 +45,11 @@ where
         }
     }
 }
-impl PdfOperationType for StraightLine {
+impl PdfObjectType for StraightLine {
     fn write(
         self,
-        _: &crate::document::PdfResources,
-        writer: &mut super::OperationWriter,
+        _: &PdfResources,
+        writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
         if self.points.is_empty() {
             return Ok(());
@@ -71,27 +73,27 @@ impl PdfOperationType for StraightLine {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LinePoint {
-    Point(Point),
+    Point(PdfPosition),
     V1Bezier {
-        start: Point,
-        end: Point,
+        start: PdfPosition,
+        end: PdfPosition,
     },
     V2Bezier {
-        start: Point,
-        end: Point,
+        start: PdfPosition,
+        end: PdfPosition,
     },
     /// The first point is the start, the second point is the control point, and the third point is the end.
     ///
     /// See 8.5.2.2
     ThreePointBezier {
-        start: Point,
-        end: Point,
-        new_control: Point,
+        start: PdfPosition,
+        end: PdfPosition,
+        new_control: PdfPosition,
     },
 }
 impl Default for LinePoint {
     fn default() -> Self {
-        Self::Point(Point::default())
+        Self::Point(PdfPosition::default())
     }
 }
 
@@ -119,18 +121,18 @@ impl From<LinePoint> for (PathConstructionOperators, Vec<Object>) {
         }
     }
 }
-impl From<Point> for LinePoint {
-    fn from(point: Point) -> Self {
+impl From<PdfPosition> for LinePoint {
+    fn from(point: PdfPosition) -> Self {
         Self::Point(point)
     }
 }
-impl From<(Point, Point)> for LinePoint {
-    fn from((start, end): (Point, Point)) -> Self {
+impl From<(PdfPosition, PdfPosition)> for LinePoint {
+    fn from((start, end): (PdfPosition, PdfPosition)) -> Self {
         Self::V1Bezier { start, end }
     }
 }
-impl From<(Point, Point, Point)> for LinePoint {
-    fn from((start, end, new_control): (Point, Point, Point)) -> Self {
+impl From<(PdfPosition, PdfPosition, PdfPosition)> for LinePoint {
+    fn from((start, end, new_control): (PdfPosition, PdfPosition, PdfPosition)) -> Self {
         Self::ThreePointBezier {
             start,
             end,
@@ -140,18 +142,18 @@ impl From<(Point, Point, Point)> for LinePoint {
 }
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Line {
-    pub start: Point,
+    pub start: PdfPosition,
     /// 2D Points for the line. The `bool` indicates whether the next point is a bezier control point.
     pub points: Vec<LinePoint>,
     /// Whether the line should automatically be closed
     pub is_closed: bool,
 }
 
-impl PdfOperationType for Line {
+impl PdfObjectType for Line {
     fn write(
         self,
-        _: &crate::document::PdfResources,
-        writer: &mut super::OperationWriter,
+        _: &PdfResources,
+        writer: &mut OperationWriter,
     ) -> Result<(), crate::TuxPdfError> {
         if self.points.is_empty() {
             return Ok(());
@@ -180,10 +182,4 @@ impl From<StraightLine> for Line {
             is_closed: value.is_closed,
         }
     }
-}
-
-pub struct LineStyles {
-    pub width: Option<f32>,
-    pub outline_color: Option<Color>,
-    pub outline_thickness: Option<f32>,
 }

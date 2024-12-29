@@ -6,39 +6,37 @@ mod keys;
 use crate::{document::PdfResources, TuxPdfError};
 pub use keys::*;
 
-use super::{
-    group::GraphicItems, image::PdfImageOperation, GraphicStyles, TextBlock, TextOperations,
-};
+use super::{group::GraphicItems, image::PdfImage, GraphicStyles, TextBlock, TextOperations};
 /// Operations that can occur in a PDF page
 #[derive(Debug, Clone, PartialEq)]
-pub enum PdfOperation {
+pub enum PdfObject {
     TextBlock(TextBlock),
     NewLine,
     Graphics(GraphicItems),
     Styles(GraphicStyles),
-    Image(PdfImageOperation),
+    Image(PdfImage),
 }
 
-impl PdfOperationType for PdfOperation {
+impl PdfObjectType for PdfObject {
     fn write(
         self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
         match self {
-            PdfOperation::TextBlock(block) => {
+            PdfObject::TextBlock(block) => {
                 block.write(resources, writer)?;
             }
-            PdfOperation::NewLine => {
+            PdfObject::NewLine => {
                 writer.add_operation(TextOperations::TextNewLine, vec![]);
             }
-            PdfOperation::Graphics(graphic) => {
+            PdfObject::Graphics(graphic) => {
                 graphic.write(resources, writer)?;
             }
-            PdfOperation::Styles(styles) => {
+            PdfObject::Styles(styles) => {
                 styles.write(resources, writer)?;
             }
-            PdfOperation::Image(pdf_image_operation) => {
+            PdfObject::Image(pdf_image_operation) => {
                 pdf_image_operation.write(resources, writer)?;
             }
         }
@@ -76,11 +74,23 @@ impl OperationWriter {
         self.push_empty_op(OperationKeys::RestoreGraphicsState);
     }
 }
-
-pub trait PdfOperationType {
+/// A type that can be written to a pdf containing a few different types of objects
+///
+/// - Objects to be displayed such as Text, Shapes, Images
+/// - Styles to be applied to the objects
+/// - Specific operations to be performed on the objects
+pub trait PdfObjectType {
     fn write(
         self,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError>;
+}
+/// A type that can contain pdf objects such as pages or layers
+pub trait LayerType {
+    /// Add an object to the layer
+    ///
+    /// # Errors
+    /// Currently this function does not return any errors however a result is used to allow for future expansion
+    fn add_to_layer(&mut self, object: PdfObject) -> Result<(), TuxPdfError>;
 }

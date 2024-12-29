@@ -13,7 +13,7 @@ use crate::{
 use super::{
     color::{Color, ColorWriter},
     shapes::RectangleStyleType,
-    OperationKeys, OperationWriter, PdfOperation, PdfOperationType,
+    OperationKeys, OperationWriter, PdfObject, PdfObjectType,
 };
 pub(crate) fn add_two_optional<U>(a: Option<U>, b: Option<U>) -> Option<U>
 where
@@ -41,13 +41,13 @@ impl RectangleStyleType for GraphicStyles {
         self.outline_color.is_some()
     }
 }
-impl From<GraphicStyles> for PdfOperation {
+impl From<GraphicStyles> for PdfObject {
     fn from(value: GraphicStyles) -> Self {
-        PdfOperation::Styles(value)
+        PdfObject::Styles(value)
     }
 }
 
-impl PdfOperationType for GraphicStyles {
+impl PdfObjectType for GraphicStyles {
     fn write(
         self,
         resources: &crate::document::PdfResources,
@@ -76,7 +76,7 @@ impl IsEmpty for PartialGraphicStyles {
         self.line_width.is_none() && self.fill_color.is_none() && self.outline_color.is_none()
     }
 }
-impl PdfOperationType for PartialGraphicStyles {
+impl PdfObjectType for PartialGraphicStyles {
     fn write(
         self,
         resources: &crate::document::PdfResources,

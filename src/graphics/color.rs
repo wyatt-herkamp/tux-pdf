@@ -8,7 +8,7 @@ use tracing::error;
 
 use crate::document::IccProfileId;
 
-use super::{operation_keys, PdfOperationType};
+use super::{operation_keys, PdfObjectType};
 macro_rules! default_rgb_colors {
     (
         $(
@@ -153,7 +153,7 @@ pub struct ColorWriter<'style> {
     pub fill_color: Option<Cow<'style, Color>>,
 }
 
-impl PdfOperationType for ColorWriter<'_> {
+impl PdfObjectType for ColorWriter<'_> {
     fn write(
         self,
         _: &crate::document::PdfResources,

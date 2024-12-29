@@ -1,15 +1,29 @@
+/*!
+ * Current Transformation Matrix (CTM) operations
+ *
+ * This is the api for interacting with the PDF current transformation matrix.
+ *
+ * The CTM is a 4x4 matrix that is derived from 6 numbers. The matrix is used to transform the
+ *
+ * - x and y coordinates on the page
+ * - the width and height of shapes
+ * - the angle of rotation
+*/
 use std::{iter::Product, ops::Mul};
 
 use lopdf::Object;
 use tracing::debug;
 
-use crate::{document::PdfResources, units::Pt, TuxPdfError};
-
-use super::{OperationKeys, OperationWriter, PdfOperationType, Point};
+use crate::{
+    document::PdfResources,
+    graphics::{OperationKeys, OperationWriter, PdfObjectType, PdfPosition},
+    units::Pt,
+    TuxPdfError,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Default)]
 pub enum CurTransMat {
-    Position(Point<Pt>),
+    Position(PdfPosition<Pt>),
     Rotate(f32),
     Scale(Pt, Pt),
     Raw([f32; 6]),
@@ -89,7 +103,7 @@ impl From<CurTransMat> for Vec<Object> {
     }
 }
 
-impl PdfOperationType for CurTransMat {
+impl PdfObjectType for CurTransMat {
     fn write(self, _: &PdfResources, writer: &mut OperationWriter) -> Result<(), TuxPdfError> {
         let values: Vec<Object> = self.into();
 
@@ -98,7 +112,7 @@ impl PdfOperationType for CurTransMat {
         Ok(())
     }
 }
-impl PdfOperationType for Vec<CurTransMat> {
+impl PdfObjectType for Vec<CurTransMat> {
     #[inline(always)]
     fn write(
         self,
@@ -132,11 +146,13 @@ impl Mul for CtmMatrix {
 
 #[cfg(test)]
 mod tests {
+    use crate::graphics::PdfPosition;
+
     use super::*;
 
     #[test]
     fn basic_ctm_combine() {
-        let a = CurTransMat::Position(Point::new(Pt(10.0), Pt(10.0)));
+        let a = CurTransMat::Position(PdfPosition::new(Pt(10.0), Pt(10.0)));
         let b = CurTransMat::Rotate(90.0);
         let c = CurTransMat::Scale(Pt(2.0), Pt(2.0));
 
@@ -151,7 +167,7 @@ mod tests {
 
     #[test]
     fn high_position() {
-        let a = CurTransMat::Position(Point::new(Pt(10.0), Pt(700.0)));
+        let a = CurTransMat::Position(PdfPosition::new(Pt(10.0), Pt(700.0)));
         let b = CurTransMat::Scale(Pt(2.0), Pt(2.0));
 
         let vec: Vec<CurTransMat> = vec![a, b];

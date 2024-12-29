@@ -2,8 +2,10 @@ pub mod conformance;
 mod meta;
 mod resources;
 
+use std::io::Write;
+
 use crate::{
-    graphics::{OperationWriter, PdfOperation, PdfOperationType},
+    graphics::{OperationWriter, PdfObject, PdfObjectType},
     page::PdfPage,
     TuxPdfError, TuxPdfResult,
 };
@@ -57,8 +59,16 @@ impl PdfDocument {
     {
         self.resources.xobjects.add_xobject(xobject.into())
     }
-
-    pub fn write_to_lopdf_document(mut self) -> TuxPdfResult<lopdf::Document> {
+    /// Saves the PDF document to a writer
+    pub fn save_to<W: Write>(self, writer: &mut W) -> TuxPdfResult<()> {
+        let mut document = self.save_to_lopdf_document()?;
+        document.save_to(writer)?;
+        Ok(())
+    }
+    /// Saves the PDF document to a [lopdf::Document]
+    ///
+    /// This is useful if you want to manipulate the document further before saving it to a file
+    pub fn save_to_lopdf_document(mut self) -> TuxPdfResult<lopdf::Document> {
         let mut writer = DocumentWriter::default();
         {
             let info_dict: Dictionary = self.metadata.info.into();
@@ -100,7 +110,7 @@ impl PdfDocument {
     }
 }
 
-fn operations_to_content(resources: &PdfResources, operations: Vec<PdfOperation>) -> Content {
+fn operations_to_content(resources: &PdfResources, operations: Vec<PdfObject>) -> Content {
     let mut writer = OperationWriter::default();
     for operation in operations {
         operation.write(resources, &mut writer).unwrap();
@@ -201,7 +211,6 @@ impl DocumentWriter {
         if let Some(info_dict) = info_dict {
             document.trailer.set("Info", info_dict);
         }
-
         Ok(document)
     }
 }

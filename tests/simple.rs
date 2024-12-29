@@ -1,7 +1,7 @@
 use test_utils::{destination_dir, fonts_dir, init_logger};
 use tux_pdf::{
     document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
-    graphics::{text::TextStyle, Point, TextBlock},
+    graphics::{text::TextStyle, LayerType, PdfPosition, TextBlock},
     page::{page_sizes::A4, PdfPage},
     units::UnitType,
 };
@@ -25,7 +25,7 @@ fn simple_test() -> anyhow::Result<()> {
     let mut page = PdfPage::new_from_page_size(A4);
     let test_0_0 = TextBlock {
         content: "Font is Built in Helvetica \n I am a new line!!!".into(),
-        position: Point {
+        position: PdfPosition {
             x: 0.into(),
             y: 0.into(),
         },
@@ -34,10 +34,10 @@ fn simple_test() -> anyhow::Result<()> {
             ..Default::default()
         },
     };
-    page.add_operation(test_0_0.into());
+    page.add_to_layer(test_0_0.into())?;
     let test_text = TextBlock {
         content: "Font is Built in Helvetica \n I am a new line!!!".into(),
-        position: Point {
+        position: PdfPosition {
             x: 10f32.into(),
             y: 210f32.into(),
         },
@@ -49,7 +49,7 @@ fn simple_test() -> anyhow::Result<()> {
 
     let roboto_text = TextBlock {
         content: "Font is Roboto".into(),
-        position: Point {
+        position: PdfPosition {
             x: 20f32.into(),
             y: 180f32.into(),
         },
@@ -58,11 +58,11 @@ fn simple_test() -> anyhow::Result<()> {
             ..Default::default()
         },
     };
-    page.add_operation(test_text.into());
-    page.add_operation(roboto_text.into());
+    page.add_to_layer(test_text.into())?;
+    page.add_to_layer(roboto_text.into())?;
     doc.add_page(page);
 
-    let mut pdf = doc.write_to_lopdf_document()?;
+    let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(destination_dir().join("simple.pdf"))?;
     pdf.save_to(&mut file)?;
 
@@ -77,7 +77,7 @@ fn all_roboto() -> anyhow::Result<()> {
     test_utils::set_metadata_for_test(&mut doc);
 
     let mut page = PdfPage::new_from_page_size(A4);
-    let mut text_position = Point {
+    let mut text_position = PdfPosition {
         x: 10f32.into(),
         y: A4.top_left_point().y - 10f32.pt(),
     };
@@ -98,13 +98,13 @@ fn all_roboto() -> anyhow::Result<()> {
                 ..Default::default()
             },
         };
-        page.add_operation(test_text.into());
+        page.add_to_layer(test_text.into())?;
         text_position.y -= 20f32;
     }
 
     doc.add_page(page);
 
-    let mut pdf = doc.write_to_lopdf_document()?;
+    let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(destination_dir().join("all_roboto.pdf"))?;
     pdf.save_to(&mut file)?;
 

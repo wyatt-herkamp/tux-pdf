@@ -16,6 +16,7 @@ use super::{
 pub struct GraphicsGroup {
     pub styles: Option<GraphicStyles>,
     pub items: Vec<GraphicItems>,
+    pub section_name: Option<String>,
 }
 impl<Item, Iter> From<Iter> for GraphicsGroup
 where
@@ -26,6 +27,7 @@ where
         Self {
             styles: None,
             items: group.map(|item| item.into()).collect(),
+            section_name: None,
         }
     }
 }
@@ -44,11 +46,9 @@ impl GraphicsGroup {
             self.add_item(item.into());
         }
     }
-    pub fn with_styles(styles: GraphicStyles) -> Self {
-        Self {
-            styles: Some(styles),
-            items: Vec::new(),
-        }
+    pub fn with_styles(mut self, styles: GraphicStyles) -> Self {
+        self.styles = Some(styles);
+        self
     }
     pub fn add_item<I>(&mut self, item: I)
     where
@@ -63,6 +63,12 @@ impl PdfObjectType for GraphicsGroup {
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
+        let marked_session = if let Some(name) = self.section_name {
+            writer.begin_marked_content(name);
+            true
+        } else {
+            false
+        };
         writer.add_operation(OperationKeys::SaveGraphicsState, vec![]);
         if let Some(styles) = self.styles {
             styles.write(resources, writer)?;
@@ -73,7 +79,9 @@ impl PdfObjectType for GraphicsGroup {
             writer.add_operation(OperationKeys::RestoreGraphicsState, vec![]);
         }
         writer.add_operation(OperationKeys::RestoreGraphicsState, vec![]);
-
+        if marked_session {
+            writer.end_section();
+        }
         Ok(())
     }
 }

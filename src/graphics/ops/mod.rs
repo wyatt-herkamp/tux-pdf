@@ -78,7 +78,9 @@ impl OperationWriter {
     pub fn restore_graphics_state(&mut self) {
         self.push_empty_op(OperationKeys::RestoreGraphicsState);
     }
-
+    /// Begin a new layer
+    ///
+    /// Ensure to call [Self::end_section] after this to close the layer
     pub fn start_layer(&mut self, layer_id: LayerId) {
         self.layers.push(layer_id.clone());
         self.add_operation(
@@ -86,8 +88,20 @@ impl OperationWriter {
             vec![Object::Name("OC".as_bytes().to_vec()), layer_id.into()],
         );
     }
-    pub fn end_layer(&mut self) {
-        self.push_empty_op(OperationKeys::EndLayer);
+
+    /// Begin a marked content section
+    ///
+    /// Ensure to call [Self::end_section] after this to close the section
+    pub fn begin_marked_content(&mut self, section_name: impl Into<String>) {
+        let section_name = section_name.into();
+        self.add_operation(
+            OperationKeys::BeginMarkedContent,
+            vec![Object::Name(section_name.into_bytes())],
+        );
+    }
+    /// Used for both ending a [layer](Self::start_layer) and a [marked content section](Self::begin_marked_content)
+    pub fn end_section(&mut self) {
+        self.push_empty_op(OperationKeys::EndSection);
     }
 }
 /// A type that can be written to a pdf containing a few different types of objects

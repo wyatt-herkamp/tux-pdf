@@ -74,5 +74,6 @@ operation_keys!(
     /// Render a xobject
     PaintXObject => "Do",
     BeginLayer => "BDC",
-    EndLayer => "EMC"
+    BeginMarkedContent => "BMC",
+    EndSection => "EMC"
 );

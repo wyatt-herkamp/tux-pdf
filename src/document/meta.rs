@@ -7,10 +7,7 @@ use crate::{
     utils::{strum_into_name, IsEmpty},
 };
 
-use super::{
-    conformance::PdfConformance,
-    types::{CatalogObject, OptionalContentProperties},
-};
+use super::{conformance::PdfConformance, types::CatalogObject};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PdfMetadata {

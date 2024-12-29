@@ -250,15 +250,7 @@ pub struct OptionalContentConfiguration {
 }
 
 impl From<OptionalContentConfiguration> for Dictionary {
-    fn from(occ: OptionalContentConfiguration) -> Self {
-        let OptionalContentConfiguration {
-            ocgs,
-            base_state,
-            on,
-            off,
-        } = occ;
-        let mut dict = Dictionary::new();
-
-        dict
+    fn from(_: OptionalContentConfiguration) -> Self {
+        Dictionary::new()
     }
 }

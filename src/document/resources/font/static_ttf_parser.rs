@@ -7,6 +7,8 @@
 
 use ttf_parser::Face;
 
+use crate::TuxPdfError;
+
 use super::TtfParserFont;
 #[derive(Debug, Clone)]
 pub struct StaticTtfFace {
@@ -19,10 +21,7 @@ impl PartialEq for StaticTtfFace {
 }
 
 impl StaticTtfFace {
-    pub fn from_slice(
-        data: &'static [u8],
-        index: u32,
-    ) -> Result<Self, ttf_parser::FaceParsingError> {
+    pub fn from_slice(data: &'static [u8], index: u32) -> Result<Self, TuxPdfError> {
         let face = Face::parse(data, index)?;
         Ok(Self {
             inner: Box::new(face),

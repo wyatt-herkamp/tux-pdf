@@ -109,6 +109,7 @@ impl TableLayout {
                 GraphicsGroup {
                     styles: Some(styles),
                     items: vec![simple_lines.into()],
+                    ..Default::default()
                 }
                 .into(),
             );
@@ -132,6 +133,7 @@ impl TableLayout {
             GraphicsGroup {
                 styles: Some(styles),
                 items: vec![row_rect.into()],
+                ..Default::default()
             }
             .into(),
         )
@@ -176,6 +178,7 @@ impl TableLayout {
                 GraphicsGroup {
                     styles: Some(row_styles.into()),
                     items: vec![row_rect.into()],
+                    ..Default::default()
                 }
                 .into(),
             );
@@ -220,6 +223,7 @@ impl TableLayout {
         GraphicsGroup {
             styles: None,
             items: lines,
+            ..Default::default()
         }
     }
 }

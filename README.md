@@ -22,7 +22,7 @@ Early development stage. Not ready for use.
 - [x] Text Rendering
 - [ ] Fonts
   - [X] Custom Fonts
-  - [ ] Built In Pdf Fonts (They work however, not metrics are provided meaning text is not correctly positioned)
+  - [ ] Built In Pdf Fonts (They work however, no metrics are provided meaning text is not correctly positioned)
 - [ ] External Objects
   - [X] Images
   - [ ] SVG
@@ -31,7 +31,9 @@ Early development stage. Not ready for use.
   - [x] Lines
   - [ ] Shapes (Circles, Rectangles, etc)
   - [ ] Paths
-- [ ] Layers
+  - [ ] ICC Color Profiles
+- [x] Layers
+  - [ ] More Intutive API
 - [ ] Layouts and Tables
   - [x] Tables (Works but needs to be improved)
   - [x] Grid Layout And Flex Layout using [Taffy](https://github.com/DioxusLabs/taffy)

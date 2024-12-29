@@ -90,7 +90,7 @@ impl PdfDocument {
                 };
                 operation_writer.start_layer(layer);
                 operations_to_content(&self.resources, layer_content, &mut operation_writer);
-                operation_writer.end_layer();
+                operation_writer.end_section();
             }
             operations_to_content(&self.resources, page.ops, &mut operation_writer);
             let OperationWriter { operations, layers } = operation_writer;

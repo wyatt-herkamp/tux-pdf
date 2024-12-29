@@ -4,8 +4,8 @@ mod style_builders;
 use crate::{
     document::PdfDocument,
     graphics::{
-        color::BLACK_RGB, shapes::OutlineRect, size::Size, GraphicStyles, GraphicsGroup,
-        HasPosition, LayerType, PdfPosition,
+        color::BLACK_RGB, shapes::OutlineRect, size::Size, GraphicItems, GraphicStyles,
+        GraphicsGroup, HasPosition, LayerType, PdfPosition,
     },
     page::PdfPage,
     units::{Pt, UnitType},
@@ -171,7 +171,7 @@ impl PdfTaffyLayout {
         let Self {
             taffy_tree, items, ..
         } = self;
-
+        let mut graphic_items: Vec<GraphicItems> = Vec::with_capacity(items.len() + 1);
         for item in items {
             let node = taffy_tree.get_final_layout(item.node_id);
             let content_y: Pt = node.location.y.into();
@@ -193,15 +193,7 @@ impl PdfTaffyLayout {
             };
             let outline = OutlineRect { position, size };
 
-            let graphics_items = GraphicsGroup {
-                items: vec![outline.into()],
-                styles: Some(GraphicStyles {
-                    fill_color: Some(BLACK_RGB),
-                    line_width: Some(1f32.pt()),
-                    ..Default::default()
-                }),
-            };
-            page.add_to_layer(graphics_items.into())?;
+            graphic_items.push(outline.into());
         }
         let node = taffy_tree.get_final_layout(root);
         let content_y: Pt = node.content_box_y().into();
@@ -217,14 +209,15 @@ impl PdfTaffyLayout {
         info!(?position, ?size, "Drawing Grid Outline");
 
         let grid_outline = OutlineRect::new_from_bottom_left(position, size);
-
+        graphic_items.push(grid_outline.into());
         let graphics_items = GraphicsGroup {
-            items: vec![grid_outline.into()],
+            items: graphic_items,
             styles: Some(GraphicStyles {
                 fill_color: Some(BLACK_RGB),
                 line_width: Some(1f32.pt()),
                 ..Default::default()
             }),
+            section_name: Some("LayoutOutline".to_string()),
         };
 
         page.add_to_layer(graphics_items.into())?;

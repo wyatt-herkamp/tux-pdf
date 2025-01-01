@@ -1,13 +1,13 @@
-use lopdf::{
-    content::{Content, Operation},
-    Object,
-};
 mod keys;
 use crate::{
     document::{LayerId, PdfResources},
     TuxPdfError,
 };
 pub use keys::*;
+use tux_pdf_low::{
+    content::{Content, Operation},
+    types::Object,
+};
 
 use super::{group::GraphicItems, image::PdfImage, GraphicStyles, TextBlock, TextOperations};
 /// Operations that can occur in a PDF page
@@ -85,7 +85,7 @@ impl OperationWriter {
         self.layers.push(layer_id.clone());
         self.add_operation(
             OperationKeys::BeginLayer,
-            vec![Object::Name("OC".as_bytes().to_vec()), layer_id.into()],
+            vec![Object::name("OC".as_bytes().to_vec()), layer_id.into()],
         );
     }
 
@@ -96,7 +96,7 @@ impl OperationWriter {
         let section_name = section_name.into();
         self.add_operation(
             OperationKeys::BeginMarkedContent,
-            vec![Object::Name(section_name.into_bytes())],
+            vec![Object::name(section_name.into_bytes())],
         );
     }
     /// Used for both ending a [layer](Self::start_layer) and a [marked content section](Self::begin_marked_content)

@@ -64,7 +64,7 @@ fn simple_test() -> anyhow::Result<()> {
 
     let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(destination_dir().join("simple.pdf"))?;
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
 
     Ok(())
 }
@@ -106,7 +106,7 @@ fn all_roboto() -> anyhow::Result<()> {
 
     let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(destination_dir().join("all_roboto.pdf"))?;
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
 
     Ok(())
 }

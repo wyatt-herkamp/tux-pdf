@@ -11,9 +11,14 @@ use crate::{
 };
 use ahash::{HashMap, HashMapExt};
 use either::Either;
-use lopdf::{content::Content, dictionary, Dictionary, Object, ObjectId, Stream};
 pub use meta::*;
 pub use resources::*;
+use tux_pdf_low::{
+    content::Content,
+    dictionary,
+    document::PdfDocumentWriter,
+    types::{Dictionary, Object, ObjectId, PdfType, Stream},
+};
 use types::{OptionalContentProperties, Page, PagesObject, PdfDirectoryType, Resources};
 pub mod types;
 pub struct PdfDocument {
@@ -64,13 +69,13 @@ impl PdfDocument {
     /// Saves the PDF document to a writer
     pub fn save_to<W: Write>(self, writer: &mut W) -> TuxPdfResult<()> {
         let mut document = self.save_to_lopdf_document()?;
-        document.save_to(writer)?;
+        document.save(writer)?;
         Ok(())
     }
     /// Saves the PDF document to a [lopdf::Document]
     ///
     /// This is useful if you want to manipulate the document further before saving it to a file
-    pub fn save_to_lopdf_document(mut self) -> TuxPdfResult<lopdf::Document> {
+    pub fn save_to_lopdf_document(mut self) -> TuxPdfResult<PdfDocumentWriter> {
         let mut writer = DocumentWriter::default();
         {
             let info_dict: Dictionary = self.metadata.info.into();
@@ -95,8 +100,8 @@ impl PdfDocument {
             operations_to_content(&self.resources, page.ops, &mut operation_writer);
             let OperationWriter { operations, layers } = operation_writer;
             let content = Content { operations };
-            let content_id =
-                writer.insert_object(Stream::new(dictionary! {}, content.encode().unwrap()).into());
+            let content_id = writer
+                .insert_object(Stream::new(dictionary! {}, content.write_to_vec().unwrap()).into());
             let resources_id = if layers.is_empty() {
                 writer.shared_resources_id()
             } else {
@@ -167,7 +172,7 @@ pub struct DocumentWriter {
     resources_id: Option<ObjectId>,
     info_dict: Option<ObjectId>,
     catalog_extras: Option<CatalogInfo>,
-    document: lopdf::Document,
+    document: PdfDocumentWriter,
 }
 impl Default for DocumentWriter {
     fn default() -> Self {
@@ -175,7 +180,7 @@ impl Default for DocumentWriter {
             layers: HashMap::new(),
             fonts: None,
             xobjects: None,
-            document: lopdf::Document::with_version("1.7"),
+            document: PdfDocumentWriter::default(),
             pages: Vec::new(),
             pages_id: None,
             info_dict: None,
@@ -193,11 +198,11 @@ impl DocumentWriter {
         let xobjects_id = self.xobjects_id();
         self.document.set_object(xobjects_id, xobjects);
     }
-    pub fn insert_object(&mut self, object: lopdf::Object) -> lopdf::ObjectId {
+    pub fn insert_object(&mut self, object: Object) -> ObjectId {
         self.document.add_object(object)
     }
     pub fn new_object_id(&mut self) -> ObjectId {
-        self.document.new_object_id()
+        self.document.next_object_id()
     }
     pub fn new_page(&mut self, page: Dictionary) -> ObjectId {
         let page_id = self.insert_object(page.into());
@@ -242,7 +247,7 @@ impl DocumentWriter {
             resources_id
         }
     }
-    pub(crate) fn finish(self) -> TuxPdfResult<lopdf::Document> {
+    pub(crate) fn finish(self) -> TuxPdfResult<PdfDocumentWriter> {
         let Self {
             fonts,
             xobjects,
@@ -278,9 +283,9 @@ impl DocumentWriter {
         // Create Catalog object
         let catalog_id = document.add_object(catalog_object.into_dictionary());
         // Point the Root key to the Pages object
-        document.trailer.set("Root", catalog_id);
+        document.trailer.root = Some(catalog_id);
         if let Some(info_dict) = info_dict {
-            document.trailer.set("Info", info_dict);
+            document.trailer.info = Some(info_dict);
         }
         Ok(document)
     }

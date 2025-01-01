@@ -53,6 +53,6 @@ pub fn main() -> anyhow::Result<()> {
 
     let mut file = File::create(args.output_file)?;
 
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
     Ok(())
 }

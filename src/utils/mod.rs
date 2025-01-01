@@ -142,9 +142,9 @@ macro_rules! strum_into_name {
     (
         $enum_ty:ty
     ) => {
-        impl From<$enum_ty> for lopdf::Object {
+        impl From<$enum_ty> for tux_pdf_low::types::Object {
             fn from(value: $enum_ty) -> Self {
-                lopdf::Object::Name(value.to_string().into_bytes())
+                tux_pdf_low::types::Object::name(value.to_string())
             }
         }
     };

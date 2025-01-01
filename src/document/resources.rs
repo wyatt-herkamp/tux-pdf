@@ -101,14 +101,14 @@ macro_rules! object_id_type {
                 write!(f, "{}", self.0)
             }
         }
-        impl From<$type> for lopdf::Object {
+        impl From<$type> for tux_pdf_low::types::Object {
             fn from(id: $type) -> Self {
-                lopdf::Object::Name(id.0.into_bytes())
+                tux_pdf_low::types::Object::name(id.0)
             }
         }
-        impl From<&$type> for lopdf::Object {
+        impl From<&$type> for tux_pdf_low::types::Object {
             fn from(id: &$type) -> Self {
-                lopdf::Object::Name(id.0.clone().into_bytes())
+                tux_pdf_low::types::Object::name(id.0.as_bytes())
             }
         }
         impl From<$type> for String {
@@ -117,8 +117,8 @@ macro_rules! object_id_type {
             }
         }
         impl super::types::PdfType for $type {
-            fn into_object(self) -> lopdf::Object {
-                lopdf::Object::Name(self.0.into_bytes())
+            fn into_object(self) -> tux_pdf_low::types::Object {
+                tux_pdf_low::types::Object::name(self.0.into_bytes())
             }
         }
         impl From<$type> for ResourceNotRegistered {

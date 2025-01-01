@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-use lopdf::Object;
+use tux_pdf_low::types::Object;
 
 use crate::units::{Mm, Pt};
 

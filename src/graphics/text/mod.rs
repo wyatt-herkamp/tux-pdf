@@ -262,7 +262,7 @@ mod tests {
 
         let mut file = std::fs::File::create("target/test_max_width.pdf")?;
 
-        pdf.save_to(&mut file)?;
+        pdf.save(&mut file)?;
         Ok(())
     }
 }

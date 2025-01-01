@@ -4,8 +4,11 @@ mod font_descriptor;
 pub use cid_fonts::*;
 use derive_builder::Builder;
 pub use font_descriptor::*;
-use lopdf::{dictionary, Dictionary, Object, ObjectId, Stream};
 use strum::{AsRefStr, Display, EnumString};
+use tux_pdf_low::{
+    dictionary,
+    types::{Dictionary, Name, Object, ObjectId, Stream},
+};
 
 use super::PdfDirectoryType;
 /// A font subtype
@@ -107,15 +110,15 @@ impl<SubType: FontSubType> PdfDirectoryType for FontObject<'_, SubType> {
         "Font"
     }
     fn into_dictionary(self) -> Dictionary {
-        let base_font = Object::Name(self.base_font.as_bytes().to_vec());
+        let base_font = Object::name(self.base_font.as_ref());
         let encoding = self
             .encoding
-            .map(|encoding| Object::Name(encoding.as_ref().as_bytes().to_vec()));
-        let sub_type = Object::Name(self.sub_type.sub_type().as_bytes().to_vec());
+            .map(|encoding| Object::name(encoding.as_ref().as_bytes().to_vec()));
+        let sub_type = Object::name(self.sub_type.sub_type());
         let mut dictionary = dictionary! {
-            "Type" => Self::dictionary_type_key(),
+            "Type" => Name::from(Self::dictionary_type_key()),
             "Subtype" => sub_type,
-            "BaseFont" => base_font,
+            "BaseFont" => base_font
         };
         if let Some(encoding) = encoding {
             dictionary.set("Encoding", encoding);

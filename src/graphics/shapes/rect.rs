@@ -1,5 +1,7 @@
 use std::ops::{Add, Sub};
 
+use tux_pdf_low::types::Object;
+
 use crate::{
     graphics::{
         primitives::{
@@ -235,7 +237,7 @@ impl<U> OutlineRect<U> {
 }
 
 impl OutlineRect {
-    pub fn to_array(&self) -> Vec<lopdf::Object> {
+    pub fn to_array(&self) -> Vec<Object> {
         let PdfPosition { x, y } = self.position;
         let Size { width, height } = self.size;
         vec![
@@ -247,12 +249,12 @@ impl OutlineRect {
     }
 }
 
-impl<U> From<OutlineRect<U>> for lopdf::Object
+impl<U> From<OutlineRect<U>> for Object
 where
-    U: Into<lopdf::Object>,
+    U: Into<Object>,
 {
     fn from(rect: OutlineRect<U>) -> Self {
-        lopdf::Object::Array(rect.into())
+        Object::Array(rect.into())
     }
 }
 

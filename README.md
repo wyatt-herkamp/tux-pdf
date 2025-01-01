@@ -49,11 +49,7 @@ Early development stage. Not ready for use.
 ## Examples
 - [CSV to PDF](examples/csv_to_pdf/main.rs) - A simple example of how to convert a csv file to a pdf
 - [Hello World](examples/hello_world/main.rs) - Shows hello world and an image
-## Credit
 
-This library is inspired partially by [printpdf](https://github.com/fschutt/printpdf)
-
-Thank you to the authors of [lopdf](https://github.com/J-F-Liu/lopdf/) for doing the heavy lifting of the pdf file format.
 
 ## License
 

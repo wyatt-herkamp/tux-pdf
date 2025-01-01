@@ -48,6 +48,6 @@ pub fn basic_image() -> anyhow::Result<()> {
 
     let mut file = File::create(destination_dir().join("basic_image.pdf"))?;
 
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
     Ok(())
 }

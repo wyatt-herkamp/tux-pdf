@@ -1,5 +1,6 @@
 use time::format_description;
 use time::OffsetDateTime;
+use tux_pdf_low::types::Object;
 pub fn format_time_offset_date_time(offset_date_time: OffsetDateTime) -> String {
     let format = "D:[year][month padding:zero][day padding:zero][hour padding:zero][minute padding:zero][second padding:zero][offset_hour sign:mandatory]'[offset_minute]";
     let format = format_description::parse(format).unwrap();
@@ -8,11 +9,8 @@ pub fn format_time_offset_date_time(offset_date_time: OffsetDateTime) -> String 
 pub trait PdfDateTimeType {
     fn format_pdf_date_time(&self) -> String;
 
-    fn format_into_object(&self) -> lopdf::Object {
-        lopdf::Object::String(
-            self.format_pdf_date_time().into_bytes(),
-            lopdf::StringFormat::Literal,
-        )
+    fn format_into_object(&self) -> Object {
+        Object::string_literal_owned(self.format_pdf_date_time())
     }
 }
 impl PdfDateTimeType for OffsetDateTime {

@@ -115,7 +115,7 @@ fn table_test() -> anyhow::Result<()> {
     table.render(&mut doc, (page_rules, page))?;
     let mut pdf = doc.save_to_lopdf_document()?;
     let mut file = std::fs::File::create(destination_dir().join("table.pdf"))?;
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
 
     Ok(())
 }
@@ -226,7 +226,7 @@ fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
     let mut file = std::fs::File::create(
         destination_dir().join("table_test_large_column_but_limited_space.pdf"),
     )?;
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
 
     Ok(())
 }

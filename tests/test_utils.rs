@@ -34,7 +34,7 @@ pub fn save_pdf_doc(doc: PdfDocument, test_name: &str) -> anyhow::Result<()> {
     let mut file = std::fs::File::create(save_location)?;
     let mut pdf = doc.save_to_lopdf_document()?;
 
-    pdf.save_to(&mut file)?;
+    pdf.save(&mut file)?;
 
     Ok(())
 }

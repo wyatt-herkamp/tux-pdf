@@ -1,11 +1,11 @@
 mod group;
 pub mod primitives;
 pub use group::*;
+use tux_pdf_low::types::Object;
 mod ops;
 pub mod shapes;
 use std::fmt::Debug;
 pub mod styles;
-use lopdf::Object;
 pub use ops::*;
 pub use styles::*;
 pub mod color;

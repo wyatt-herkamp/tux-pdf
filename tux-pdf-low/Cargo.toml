@@ -1,0 +1,15 @@
+[package]
+name = "tux-pdf-low"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+itoa = "1.0"
+ryu = "1.0"
+thiserror = "2"
+indexmap = "2"
+tracing.workspace = true
+
+[dev-dependencies]
+anyhow = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

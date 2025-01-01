@@ -1,6 +1,6 @@
-use lopdf::{Dictionary, ObjectId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
+use tux_pdf_low::types::{Dictionary, Object, ObjectId};
 
 use crate::{
     time_impl::PdfDateTimeType,
@@ -57,19 +57,19 @@ impl IsEmpty for PdfDocumentInfo {
 impl From<PdfDocumentInfo> for Dictionary {
     fn from(value: PdfDocumentInfo) -> Self {
         let mut dict = Dictionary::new();
-        dict.set("Title", value.document_title);
+        dict.set("Title", Object::string_literal_owned(value.document_title));
         if let Some(author) = value.author {
-            dict.set("Author", author);
+            dict.set("Author", Object::string_literal_owned(author));
         }
         if let Some(creator) = value.creator {
-            dict.set("Creator", creator);
+            dict.set("Creator", Object::string_literal_owned(creator));
         }
         if let Some(subject) = value.subject {
-            dict.set("Subject", subject);
+            dict.set("Subject", Object::string_literal_owned(subject));
         }
         //TODO: Add keywords
         if let Some(producer) = value.producer {
-            dict.set("Producer", producer);
+            dict.set("Producer", Object::string_literal_owned(producer));
         }
         if let Some(creation_date) = value.creation_date {
             dict.set("CreationDate", creation_date.format_into_object());

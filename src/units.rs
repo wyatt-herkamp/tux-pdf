@@ -76,7 +76,7 @@ macro_rules! into_lo_object {
     (
         $type:ident
     ) => {
-        impl From<$type> for lopdf::Object {
+        impl From<$type> for tux_pdf_low::types::Object {
             fn from(val: $type) -> Self {
                 val.0.into()
             }

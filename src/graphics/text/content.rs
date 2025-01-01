@@ -9,9 +9,9 @@ use crate::{
     units::Pt,
     TuxPdfError,
 };
-use lopdf::Object;
 
 use tracing::debug;
+use tux_pdf_low::types::Object;
 
 use super::{
     write_modifiers, OperationWriter, TextBlockState, TextModifier, TextOperations, TextStyle,
@@ -133,7 +133,9 @@ impl TextItem {
 
         writer.add_operation(
             TextOperations::ShowText,
-            vec![Object::String(text, lopdf::StringFormat::Hexadecimal)],
+            vec![Object::String(tux_pdf_low::types::PdfString::Hexadecimal(
+                text,
+            ))],
         );
         Ok(text_size)
     }

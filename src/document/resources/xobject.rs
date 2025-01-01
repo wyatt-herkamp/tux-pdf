@@ -1,10 +1,10 @@
 mod pdf_image;
-use lopdf::{Dictionary, Object};
 pub use pdf_image::*;
 
 mod form;
 pub use form::*;
 use std::collections::BTreeMap;
+use tux_pdf_low::types::{Dictionary, Object};
 
 use crate::{document::DocumentWriter, TuxPdfError};
 

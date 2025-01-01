@@ -9,8 +9,11 @@ pub use builtin::*;
 pub use font_type::*;
 pub mod owned_ttf_parser;
 pub mod static_ttf_parser;
-use lopdf::{Dictionary, Object, Stream};
 use tracing::debug;
+use tux_pdf_low::{
+    dictionary,
+    types::{Dictionary, Object, Stream},
+};
 
 use crate::{
     document::{
@@ -298,7 +301,9 @@ impl ParsedFont {
     pub fn dictionary(&self, doc: &mut DocumentWriter) -> Dictionary {
         let bytes = self.font.font_bytes().to_vec();
         let font_stream = Stream::new(
-            Dictionary::from_iter(vec![("Length1", Object::Integer(bytes.len() as i64))]),
+            dictionary! {
+                "Length1" => bytes.len() as i64
+            },
             bytes,
         )
         .with_compression(false);
@@ -480,7 +485,7 @@ impl From<FontRef> for Object {
     fn from(font_ref: FontRef) -> Self {
         match font_ref {
             FontRef::External(id) => id.into(),
-            FontRef::Builtin(builtin) => builtin.dedicated_font_id().into(),
+            FontRef::Builtin(builtin) => Object::name(builtin.dedicated_font_id()),
         }
     }
 }

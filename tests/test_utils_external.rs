@@ -1,3 +1,5 @@
+use tracing::level_filters::LevelFilter;
+
 #[allow(dead_code)]
 pub fn init_logger() {
     use tracing::{error, info, level_filters::LevelFilter};
@@ -7,8 +9,11 @@ pub fn init_logger() {
         let stdout_log = tracing_subscriber::fmt::layer().pretty().without_time();
         tracing_subscriber::registry()
             .with(
-                stdout_log
-                    .with_filter(filter::Targets::new().with_target("tux_pdf", LevelFilter::TRACE)),
+                stdout_log.with_filter(
+                    filter::Targets::new()
+                        .with_target("tux_pdf", LevelFilter::TRACE)
+                        .with_target("tux_pdf_low", LevelFilter::DEBUG),
+                ),
             )
             .init();
     });

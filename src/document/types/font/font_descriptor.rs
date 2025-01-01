@@ -1,7 +1,10 @@
 use bitflags::bitflags;
 use derive_builder::Builder;
-use lopdf::{dictionary, Dictionary, Object, ObjectId};
 use std::borrow::Cow;
+use tux_pdf_low::{
+    dictionary,
+    types::{Dictionary, Object, ObjectId},
+};
 /// Font descriptor
 ///
 /// Section 9.8
@@ -52,20 +55,20 @@ impl From<FontDescriptor<'_>> for Dictionary {
     fn from(value: FontDescriptor<'_>) -> Self {
         let font_name = value.font_name.as_bytes().to_vec();
         let mut dict = dictionary!(
-            "Type" => "FontDescriptor",
-            "FontName" => Object::Name(font_name),
+            "Type" => Object::name("FontDescriptor"),
+            "FontName" => Object::name(font_name),
             "Flags" => value.flags.bits(),
             "ItalicAngle" => value.italic_angle,
             "Ascent" => value.ascent,
             "Descent" => value.descent
         );
         if let Some(font_family) = value.font_family {
-            dict.set("FontFamily", Object::Name(font_family.as_bytes().to_vec()));
+            dict.set("FontFamily", Object::name(font_family.as_bytes().to_vec()));
         }
         if let Some(font_stretch) = value.font_stretch {
             dict.set(
                 "FontStretch",
-                Object::Name(font_stretch.as_bytes().to_vec()),
+                Object::name(font_stretch.as_bytes().to_vec()),
             );
         }
         if let Some(font_weight) = value.font_weight {
@@ -109,7 +112,7 @@ impl From<FontDescriptor<'_>> for Dictionary {
             dict.set("FontFile3", Object::Reference(font_file3));
         }
         if let Some(char_set) = value.char_set {
-            dict.set("CharSet", Object::Name(char_set.as_bytes().to_vec()));
+            dict.set("CharSet", Object::name(char_set.as_bytes().to_vec()));
         }
 
         dict

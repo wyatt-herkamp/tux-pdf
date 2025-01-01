@@ -8,7 +8,10 @@
  * If you would like to add images add the image crate to your `Cargo.toml` file.
 */
 use image::{ColorType, DynamicImage, GenericImageView, ImageDecoder};
-use lopdf::{dictionary, Object, Stream};
+use tux_pdf_low::{
+    dictionary,
+    types::{Object, ObjectId, Stream},
+};
 use utils::pull_alpha_out_of_rgb;
 mod utils;
 use crate::{
@@ -66,7 +69,7 @@ pub struct PdfXObjectImageData {
     /// Decompression filter for `image_data`, if `None` assumes uncompressed raw pixels in the expected color format.
     pub image_filter: Option<ImageFilter>,
     /// SoftMask for transparency, if `None` assumes no transparency. See page 444 of the adope pdf 1.4 reference
-    pub smask: Option<lopdf::ObjectId>,
+    pub smask: Option<ObjectId>,
     /// Required bounds to clip the image, in unit space
     /// Default value: Identity matrix (`[1 0 0 1 0 0]`) - used when value is `None`
     pub clipping_bbox: Option<CurTransMat>,
@@ -126,14 +129,14 @@ impl PdfXObjectImageData {
         let bbox: Object = Object::Array(bbox);
 
         let mut dictionary = dictionary! {
-            "Type" => "XObject",
-            "Subtype" => "Image",
+            "Type" => Object::name("XObject"),
+            "Subtype" =>Object::name( "Image"),
             "Width" => self.size.width,
             "Height" => self.size.height,
             "ColorSpace" => color_space,
             "BitsPerComponent" => self.bits_per_component as i64,
             "Interpolate" => self.interpolate,
-            "BBox" => bbox,
+            "BBox" => bbox
         };
         if let Some(smask) = self.smask {
             dictionary.set("SMask", Object::Reference(smask));

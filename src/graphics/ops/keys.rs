@@ -1,5 +1,3 @@
-use lopdf::{content::Operation, Object};
-
 macro_rules! operation_keys {
     (
         $(
@@ -51,6 +49,7 @@ macro_rules! operation_keys {
     };
 }
 pub(crate) use operation_keys;
+use tux_pdf_low::{content::Operation, types::Object};
 pub trait OperationKeyType {
     fn key(&self) -> &str;
     #[inline(always)]

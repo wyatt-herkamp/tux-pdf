@@ -1,4 +1,4 @@
-use lopdf::{Dictionary, Encoding};
+use tux_pdf_low::types::Dictionary;
 
 use crate::{
     document::types::{BuiltinFontSubType, FontEncoding, FontObject, PdfDirectoryType},
@@ -7,8 +7,8 @@ use crate::{
 };
 
 use super::{FontRenderSizeParams, FontType};
-pub static WIN_ANSI_ENCODING: Encoding<'static> =
-    lopdf::Encoding::SimpleEncoding("WinAnsiEncoding");
+///pub static WIN_ANSI_ENCODING: Encoding<'static> =
+///    lopdf::Encoding::SimpleEncoding("WinAnsiEncoding");
 
 /// The 14 built-in fonts per the PDF specification.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -44,7 +44,7 @@ impl FontType for BuiltinFont {
         })
     }
     fn encode_text(&self, text: &str) -> Vec<u8> {
-        lopdf::Document::encode_text(&WIN_ANSI_ENCODING, text)
+        text.as_bytes().to_vec()
     }
 }
 impl From<BuiltinFont> for Dictionary {

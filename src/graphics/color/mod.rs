@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
 use derive_more::derive::From;
-use lopdf::Object;
 mod image;
 pub use image::*;
 use tracing::error;
+use tux_pdf_low::types::Object;
 
 use crate::document::IccProfileId;
 

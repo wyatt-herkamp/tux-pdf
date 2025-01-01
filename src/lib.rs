@@ -31,6 +31,8 @@ pub enum TuxPdfError {
     UnsupportedImageColorType(image::ColorType),
     #[error(transparent)]
     LayoutError(#[from] LayoutError),
+    #[error(transparent)]
+    InternalError(#[from] tux_pdf_low::LowTuxPdfError),
 }
 impl From<FontRef> for TuxPdfError {
     fn from(font_ref: FontRef) -> Self {
@@ -64,7 +66,7 @@ pub(crate) mod tests {
         let mut file = std::fs::File::create(save_location)?;
         let mut pdf = doc.save_to_lopdf_document()?;
 
-        pdf.save_to(&mut file)?;
+        pdf.save(&mut file)?;
 
         Ok(())
     }

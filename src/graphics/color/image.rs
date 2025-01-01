@@ -1,6 +1,6 @@
 use image::ColorType::{self, *};
-use lopdf::Object;
 use strum::Display;
+use tux_pdf_low::types::Object;
 
 use crate::{utils::strum_into_name, TuxPdfError};
 

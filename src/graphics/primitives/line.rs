@@ -1,4 +1,4 @@
-use lopdf::Object;
+use tux_pdf_low::types::Object;
 
 use crate::{
     document::PdfResources,

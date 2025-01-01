@@ -2,9 +2,12 @@
 //!
 //! Structures that represent different Dictionary objects in a PDF document.
 use either::Either;
-use lopdf::{dictionary, Dictionary, Object, ObjectId};
 mod font;
 pub use font::*;
+use tux_pdf_low::{
+    dictionary,
+    types::{Dictionary, Object, ObjectId},
+};
 
 use super::{PageLayout, PageMode};
 pub trait PdfType {
@@ -57,8 +60,8 @@ impl PdfDirectoryType for PagesObject {
         let PagesObject { kids } = self;
         let number_of_pages = kids.len() as i64;
         let kids: Vec<_> = kids.into_iter().map(Object::from).collect();
-        let mut dict = lopdf::Dictionary::new();
-        dict.set("Type", Self::dictionary_type_key());
+        let mut dict = Dictionary::new();
+        dict.set("Type", Object::name(Self::dictionary_type_key()));
         dict.set("Kids", kids);
         dict.set("Count", number_of_pages);
         dict
@@ -90,17 +93,17 @@ impl PdfDirectoryType for CatalogObject {
             page_mode,
             oc_properties,
         } = self;
-        let mut catalog = dictionary! {
-            "Type" => Self::dictionary_type_key(),
+        let mut catalog: Dictionary = dictionary! {
+            "Type" => Object::name(Self::dictionary_type_key()),
             "Pages" => pages,
             "PageLayout" => layout,
-            "PageMode" => page_mode,
+            "PageMode" => page_mode
         };
         if let Some(oc_properties) = oc_properties {
             catalog.set("OCProperties", oc_properties.into_dictionary());
         }
         if let Some(language) = language {
-            catalog.set("Lang", language);
+            catalog.set("Lang", Object::string_literal_owned(language));
         }
 
         catalog
@@ -179,11 +182,11 @@ impl PdfDirectoryType for Page {
             rotation,
         } = self;
         let mut dictionary = dictionary! {
-            "Type" => "Page",
+            "Type" => Object::name("Page"),
             "Parent" => parent_id,
             "Resources" => resources_id,
             "MediaBox" => media_box,
-            "Contents" => contents_id,
+            "Contents" => contents_id
         };
         if let Some(crop_box) = crop_box {
             dictionary.set("CropBox", crop_box);
@@ -216,8 +219,8 @@ impl PdfDirectoryType for OptionalContentGroup {
     fn into_dictionary(self) -> Dictionary {
         let OptionalContentGroup { name } = self;
         let mut dict = Dictionary::new();
-        dict.set("Type", Self::dictionary_type_key());
-        dict.set("Name", Object::string_literal(name));
+        dict.set("Type", Object::name(Self::dictionary_type_key()));
+        dict.set("Name", Object::string_literal_owned(name));
         dict
     }
 }

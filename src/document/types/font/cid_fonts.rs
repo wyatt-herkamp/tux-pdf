@@ -6,7 +6,7 @@ use std::borrow::Cow;
 
 use derive_builder::Builder;
 use either::Either;
-use lopdf::{Dictionary, Object, ObjectId, Stream};
+use tux_pdf_low::types::{Dictionary, Object, ObjectId, Stream};
 
 use crate::document::types::PdfDirectoryType;
 
@@ -24,14 +24,8 @@ impl PdfDirectoryType for CIDSystemInfo<'_> {
 
     fn into_dictionary(self) -> Dictionary {
         let mut dict = Dictionary::new();
-        let registry = Object::String(
-            self.registry.as_bytes().to_vec(),
-            lopdf::StringFormat::Literal,
-        );
-        let ordering = Object::String(
-            self.ordering.as_bytes().to_vec(),
-            lopdf::StringFormat::Literal,
-        );
+        let registry = Object::string_literal_owned(self.registry.as_bytes().to_vec());
+        let ordering = Object::string_literal_owned(self.ordering.as_bytes().to_vec());
         dict.set("Registry", registry);
         dict.set("Ordering", ordering);
         dict.set("Supplement", self.supplement);
@@ -77,7 +71,7 @@ impl FontSubType for CidFontType2<'_> {
                     cid_font_dict.set("CIDToGIDMap", Object::Stream(stream.clone()))
                 }
                 Either::Right(name) => {
-                    cid_font_dict.set("CIDToGIDMap", Object::Name(name.as_bytes().to_vec()))
+                    cid_font_dict.set("CIDToGIDMap", Object::name(name.as_bytes().to_vec()))
                 }
             }
         }

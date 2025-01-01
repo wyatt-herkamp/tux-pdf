@@ -11,8 +11,8 @@
 */
 use std::{iter::Product, ops::Mul};
 
-use lopdf::Object;
 use tracing::debug;
+use tux_pdf_low::types::Object;
 
 use crate::{
     document::PdfResources,

@@ -2,7 +2,7 @@ pub mod conformance;
 mod meta;
 mod resources;
 
-use std::io::Write;
+use std::{io::Write, mem};
 
 use crate::{
     graphics::{OperationWriter, PdfObject, PdfObjectType},
@@ -10,14 +10,11 @@ use crate::{
     TuxPdfError, TuxPdfResult,
 };
 use ahash::{HashMap, HashMapExt};
-use either::Either;
 pub use meta::*;
 pub use resources::*;
 use tux_pdf_low::{
-    content::Content,
-    dictionary,
     document::PdfDocumentWriter,
-    types::{Dictionary, Object, ObjectId, PdfType, Stream},
+    types::{Dictionary, Object, ObjectId, ReferenceOrObject},
 };
 use types::{OptionalContentProperties, Page, PagesObject, PdfDirectoryType, Resources};
 pub mod types;
@@ -49,7 +46,7 @@ impl PdfDocument {
                     document_title: name.into(),
                     ..Default::default()
                 },
-                xmp: None,
+                ..Default::default()
             },
             resources: PdfResources::default(),
             bookmarks: PageAnnotMap::default(),
@@ -68,57 +65,92 @@ impl PdfDocument {
     }
     /// Saves the PDF document to a writer
     pub fn save_to<W: Write>(self, writer: &mut W) -> TuxPdfResult<()> {
-        let mut document = self.save_to_lopdf_document()?;
+        let document = self.write_into_pdf_document_writer()?;
         document.save(writer)?;
         Ok(())
     }
-    /// Saves the PDF document to a [lopdf::Document]
+    /// Saves the PDF document to a [PdfDocumentWriter]
     ///
     /// This is useful if you want to manipulate the document further before saving it to a file
-    pub fn save_to_lopdf_document(mut self) -> TuxPdfResult<PdfDocumentWriter> {
+    pub fn write_into_pdf_document_writer(mut self) -> TuxPdfResult<PdfDocumentWriter> {
+        // Note to future developers: This function requires a very specific order of operations.
+        // When writing pages they require the XObjects and Fonts to still be in the resources map
+        // Layers can be immeidately removed from resources as nothing else will access them from the resources map
+
         let mut writer = DocumentWriter::default();
         {
             let info_dict: Dictionary = self.metadata.info.into();
             let info_dict_id = writer.insert_object(info_dict.into());
             writer.info_dict = Some(info_dict_id);
         }
-        for (layer_id, layer) in self.resources.layers.map.iter() {
+        writer.catalog_extras = Some(self.metadata.catalog_info);
+        // Take the layers from resources and create the layers in the writer
+        // The pages should not access the layers after this point so it should be fine to take them and leave the resources empty
+        for (layer_id, layer) in std::mem::take(&mut self.resources.layers.map).into_iter() {
             let optional_content_group = layer.create_ocg_dictionary();
             let ocg_id = writer.insert_object(optional_content_group.into_dictionary().into());
-            writer.layers.insert(layer_id.clone(), ocg_id);
+
+            // Note: The amount of page ops does != the amount of pdf operations.
+            // This is because this library is abstracting pdf and each "page op" is usually multiple operations
+            let mut operation_writer: OperationWriter =
+                OperationWriter::with_capacity(2 + layer.operations.len());
+
+            operation_writer.start_layer(layer_id.clone());
+            operations_to_content(&self.resources, layer.operations, &mut operation_writer);
+            operation_writer.end_section();
+
+            let stream_content = operation_writer.into_stream(Dictionary::default())?;
+            let stream_id = writer.insert_object(stream_content.into());
+
+            writer
+                .layers
+                .insert(layer_id.clone(), WriterLayer { ocg_id, stream_id });
         }
+
         for page in self.pages {
-            let mut operation_writer = OperationWriter::default();
-            for layer in page.layers {
-                let Some(layer_content) = self.resources.layers.clone_layer_content(&layer) else {
-                    return Err(ResourceNotRegistered::LayerId(layer).into());
-                };
-                operation_writer.start_layer(layer);
-                operations_to_content(&self.resources, layer_content, &mut operation_writer);
-                operation_writer.end_section();
+            let mut layers = Vec::new();
+            for layer_id in page.layers {
+                let layer = writer
+                    .layers
+                    .get(&layer_id)
+                    .ok_or_else(|| ResourceNotRegistered::LayerId(layer_id.clone()))?;
+
+                layers.push((layer_id, *layer));
             }
-            operations_to_content(&self.resources, page.ops, &mut operation_writer);
-            let OperationWriter { operations, layers } = operation_writer;
-            let content = Content { operations };
-            let content_id = writer
-                .insert_object(Stream::new(dictionary! {}, content.write_to_vec().unwrap()).into());
+
+            let mut content_ids = Vec::with_capacity(layers.len() + 1);
+            // Check if the page has any content. If it does, write the content to the page
+            if !page.contents.is_empty() {
+                // Note: The amount of page ops does != the amount of pdf operations.
+                // This is because this library is abstracting pdf and each "page op" is usually multiple operations
+                let mut operation_writer: OperationWriter =
+                    OperationWriter::with_capacity(page.contents.len());
+
+                operations_to_content(&self.resources, page.contents, &mut operation_writer);
+                let content_stream = operation_writer.into_stream(Dictionary::default())?;
+                let content_id = writer.insert_object(content_stream.into());
+                content_ids.push(content_id);
+            }
+
             let resources_id = if layers.is_empty() {
-                writer.shared_resources_id()
+                writer.uses_shared_resources();
+                None
             } else {
                 let mut properties = Dictionary::new();
-                for layer in layers {
-                    properties.set(layer.0.as_str(), writer.layers[&layer]);
+                for (layer_id, layer) in layers {
+                    content_ids.push(layer.stream_id);
+                    properties.set(layer_id.as_str(), layer.ocg_id);
                 }
                 let resources = Resources {
-                    font: Some(Either::Left(writer.font_id())),
-                    xobject: Some(Either::Left(writer.xobjects_id())),
+                    font: Some(ReferenceOrObject::Reference(writer.font_id())),
+                    xobject: Some(ReferenceOrObject::Reference(writer.xobjects_id())),
                     properties: Some(properties),
                 };
-                writer.insert_object(resources.into_dictionary().into())
+                Some(writer.insert_object(resources.into_dictionary().into()))
             };
             let page = Page {
                 parent_id: writer.pages_id(),
-                contents_id: content_id,
+                contents_id: content_ids,
                 resources_id,
                 media_box: page.media_box.to_array(),
                 crop_box: page.crop_box.map(|cb| cb.to_array()),
@@ -130,12 +162,15 @@ impl PdfDocument {
 
             writer.new_page(page.into_dictionary());
         }
-
-        let fonts = self.resources.fonts.dictionary(&mut writer);
+        // We can consume the rest of the resources as the only parts of the code that needs them now has been converted into pdf operations
+        let PdfResources {
+            fonts, xobjects, ..
+        } = mem::take(&mut self.resources);
+        let fonts = fonts.dictionary(&mut writer);
 
         writer.fonts(fonts);
 
-        let xobjects = self.resources.xobjects.dictionary(&mut writer)?;
+        let xobjects = xobjects.dictionary(&mut writer)?;
         writer.xobjects(xobjects);
 
         writer.finish()
@@ -161,14 +196,19 @@ fn operations_to_content(
 pub struct PageAnnotMap {
     //pub map: BTreeMap<PageAnnotId, PageAnnotation>,
 }
-
-pub struct DocumentWriter {
-    layers: HashMap<LayerId, ObjectId>,
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct WriterLayer {
+    ocg_id: ObjectId,
+    stream_id: ObjectId,
+}
+pub(crate) struct DocumentWriter {
+    layers: HashMap<LayerId, WriterLayer>,
     fonts: Option<ObjectId>,
     xobjects: Option<ObjectId>,
     pages: Vec<ObjectId>,
 
     pages_id: Option<ObjectId>,
+    uses_shared_resources: bool,
     resources_id: Option<ObjectId>,
     info_dict: Option<ObjectId>,
     catalog_extras: Option<CatalogInfo>,
@@ -184,6 +224,7 @@ impl Default for DocumentWriter {
             pages: Vec::new(),
             pages_id: None,
             info_dict: None,
+            uses_shared_resources: false,
             resources_id: None,
             catalog_extras: None,
         }
@@ -237,7 +278,11 @@ impl DocumentWriter {
             xobjects_id
         }
     }
+    pub fn uses_shared_resources(&mut self) {
+        self.uses_shared_resources = true;
+    }
     /// Gets or creates a resources object id
+    #[allow(dead_code)]
     pub fn shared_resources_id(&mut self) -> ObjectId {
         if let Some(resources_id) = self.resources_id {
             resources_id
@@ -253,6 +298,7 @@ impl DocumentWriter {
             xobjects,
             pages,
             pages_id,
+            uses_shared_resources,
             resources_id,
             info_dict,
             catalog_extras,
@@ -260,22 +306,36 @@ impl DocumentWriter {
             layers,
         } = self;
         let pages_id = pages_id.ok_or(TuxPdfError::NoPagesCreated)?;
-        document.set_object(pages_id, PagesObject { kids: pages }.into_dictionary());
-        if let Some(resources_id) = resources_id {
+        let shared_resources = if uses_shared_resources {
             let resources = Resources {
-                font: fonts.map(Either::Left),
-                xobject: xobjects.map(Either::Left),
+                font: fonts.map(ReferenceOrObject::Reference),
+                xobject: xobjects.map(ReferenceOrObject::Reference),
                 ..Default::default()
             };
-            document.set_object(resources_id, resources.into_dictionary());
-        }
+            if let Some(resources_id) = resources_id {
+                document.set_object(resources_id, resources.into_dictionary());
+                Some(resources_id)
+            } else {
+                Some(document.add_object(resources.into_dictionary()))
+            }
+        } else {
+            None
+        };
+        document.set_object(
+            pages_id,
+            PagesObject {
+                kids: pages,
+                resources: shared_resources,
+            }
+            .into_dictionary(),
+        );
 
         let mut catalog_object = catalog_extras
             .unwrap_or_default()
             .create_catalog_object(pages_id);
         if !layers.is_empty() {
             let oc_properties = OptionalContentProperties {
-                ocgs: layers.into_values().collect(),
+                ocgs: layers.into_values().map(|layer| layer.ocg_id).collect(),
                 ..Default::default()
             };
             catalog_object.oc_properties = Some(oc_properties);

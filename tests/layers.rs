@@ -1,8 +1,9 @@
 use test_utils::{create_test_document, fonts_dir, save_pdf_doc};
 use tux_pdf::{
     document::owned_ttf_parser::OwnedPdfTtfFont,
-    graphics::{text::TextStyle, LayerType, PdfPosition, TextBlock},
+    graphics::{text::TextStyle, LayerType, TextBlock},
     page::{page_sizes::A4, PdfPage},
+    units::UnitType,
 };
 mod test_utils;
 #[test]
@@ -24,39 +25,29 @@ pub fn one_page_two_layers() -> anyhow::Result<()> {
     let mut page = PdfPage::new_from_page_size(A4);
 
     {
-        let layer_one_text = TextBlock {
-            content: "I am on layer 1".into(),
-            position: PdfPosition {
-                x: 250f32.into(),
-                y: 250f32.into(),
-            },
-            style: TextStyle {
+        let layer_one_text = TextBlock::from("I am on layer 1")
+            .with_position((250f32.pt(), 250f32.pt()).into())
+            .with_style(TextStyle {
                 font_ref: font.clone(),
                 ..Default::default()
-            },
-        };
+            });
         let layer_one_ref = doc.create_layer("Layer 1");
         let layer = doc.resources.layers.get_layer_mut(&layer_one_ref).unwrap();
-        layer.add_to_layer(layer_one_text.into())?;
+        layer.add_to_layer(layer_one_text)?;
         page.add_layer(layer_one_ref);
     }
 
     {
-        let layer_two_text = TextBlock {
-            content: "I am on layer 2".into(),
-            position: PdfPosition {
-                x: 250f32.into(),
-                y: 300f32.into(),
-            },
-            style: TextStyle {
+        let layer_two_text = TextBlock::from("I am on layer 2")
+            .with_position((250f32.pt(), 300f32.pt()).into())
+            .with_style(TextStyle {
                 font_ref: roboto_font_ref,
                 ..Default::default()
-            },
-        };
+            });
 
         let layer_two_ref = doc.create_layer("Layer 2");
         let layer = doc.resources.layers.get_layer_mut(&layer_two_ref).unwrap();
-        layer.add_to_layer(layer_two_text.into())?;
+        layer.add_to_layer(layer_two_text)?;
         page.add_layer(layer_two_ref);
     }
 

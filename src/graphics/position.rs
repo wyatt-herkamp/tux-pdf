@@ -149,6 +149,12 @@ where
         [point.x.into(), point.y.into()]
     }
 }
+
+impl<T> From<(T, T)> for PdfPosition<T> {
+    fn from((x, y): (T, T)) -> Self {
+        Self { x, y }
+    }
+}
 /// Converts a slice of points into an array of objects
 ///
 /// So [Point { x: 1, y: 2 }, Point { x: 3, y: 4 }] would become [1, 2, 3, 4]

@@ -52,6 +52,21 @@ impl Object {
     pub fn name(name: impl Into<Name>) -> Self {
         Object::Name(name.into())
     }
+    /// Where T can converted into an Object
+    ///
+    /// If the value is single element array, it will be converted into a single object
+    ///
+    /// Otherwise, it will be converted into an array object
+    pub fn maybe_array<T>(value: Vec<T>) -> Self
+    where
+        T: Into<Object>,
+    {
+        if value.len() == 1 {
+            value.into_iter().next().unwrap().into()
+        } else {
+            Object::Array(value.into_iter().map(Into::into).collect())
+        }
+    }
 }
 
 macro_rules! basic_from {
@@ -258,6 +273,76 @@ impl PdfObjectType for Object {
             Object::Stream(v) => v.type_name(),
             Object::Array(v) => v.type_name(),
             Object::Reference(v) => v.type_name(),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum NullOrObject<Obj = Object> {
+    Null,
+    Object(Obj),
+}
+impl<Obj> From<NullOrObject<Obj>> for Object
+where
+    Obj: Into<Object>,
+{
+    fn from(obj: NullOrObject<Obj>) -> Self {
+        match obj {
+            NullOrObject::Null => Object::Null,
+            NullOrObject::Object(o) => o.into(),
+        }
+    }
+}
+impl From<Object> for NullOrObject {
+    fn from(obj: Object) -> Self {
+        NullOrObject::Object(obj)
+    }
+}
+
+impl From<Null> for NullOrObject {
+    fn from(_: Null) -> Self {
+        NullOrObject::Null
+    }
+}
+
+impl<Obj: PdfObjectType> PdfObjectType for NullOrObject<Obj> {
+    fn encode<W>(self, writer: &mut W) -> Result<(), LowTuxPdfError>
+    where
+        W: std::io::Write,
+        Self: Sized,
+    {
+        match self {
+            NullOrObject::Null => Null.encode(writer),
+            NullOrObject::Object(o) => o.encode(writer),
+        }
+    }
+
+    fn encode_borrowed<W>(&self, writer: &mut W) -> Result<(), LowTuxPdfError>
+    where
+        W: std::io::Write,
+    {
+        match self {
+            NullOrObject::Null => Null.encode(writer),
+            NullOrObject::Object(o) => o.encode_borrowed(writer),
+        }
+    }
+    fn requires_end_separator(&self) -> bool {
+        match self {
+            NullOrObject::Null => Null.requires_end_separator(),
+            NullOrObject::Object(o) => o.requires_end_separator(),
+        }
+    }
+
+    fn requires_separator(&self) -> bool {
+        match self {
+            NullOrObject::Null => Null.requires_separator(),
+            NullOrObject::Object(o) => o.requires_separator(),
+        }
+    }
+
+    fn type_name(&self) -> &'static str {
+        match self {
+            NullOrObject::Null => Null.type_name(),
+            NullOrObject::Object(o) => o.type_name(),
         }
     }
 }

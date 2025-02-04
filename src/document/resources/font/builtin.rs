@@ -7,8 +7,6 @@ use crate::{
 };
 
 use super::{FontRenderSizeParams, FontType};
-///pub static WIN_ANSI_ENCODING: Encoding<'static> =
-///    lopdf::Encoding::SimpleEncoding("WinAnsiEncoding");
 
 /// The 14 built-in fonts per the PDF specification.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -53,6 +53,10 @@ pub trait IdType: Debug + Send + Sync {
     where
         Self: Sized;
 
+    fn add_random_suffix(self) -> Self
+    where
+        Self: Sized;
+
     fn as_str(&self) -> &str;
     fn into_string(self) -> String
     where
@@ -80,6 +84,26 @@ pub(crate) trait ObjectMapType {
         let mut loop_count = 0;
         loop {
             let id = Self::IdType::new_random();
+            if !self.has_id(&id) {
+                break id;
+            }
+            // Just in case something goes wrong
+            loop_count += 1;
+            if loop_count > 100 {
+                panic!("Failed to generate a unique font id. This should never happen. Like what the heck?");
+            }
+        }
+    }
+    fn new_id_with_prefix(&self, id: Self::IdType) -> Self::IdType
+    where
+        Self::IdType: Clone,
+    {
+        let mut loop_count = 0;
+        loop {
+            if !self.has_id(&id) {
+                break id;
+            }
+            let id = id.clone().add_random_suffix();
             if !self.has_id(&id) {
                 break id;
             }

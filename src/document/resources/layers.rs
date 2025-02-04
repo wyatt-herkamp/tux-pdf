@@ -45,7 +45,13 @@ impl IdType for LayerId {
     fn new_random() -> Self {
         Self(crate::utils::random::random_character_string(32))
     }
-
+    fn add_random_suffix(self) -> Self {
+        Self(format!(
+            "{}{}",
+            self.0,
+            crate::utils::random::random_character_string(8)
+        ))
+    }
     fn as_str(&self) -> &str {
         &self.0
     }
@@ -58,19 +64,24 @@ impl IdType for LayerId {
         "Layer"
     }
 }
+/// A layer in a PDF document
+///
+/// A layer is an optional content group that can be used to hide or show content in a PDF document.
+///
+/// They also create their own Content Stream meaning if you have a a header that is repeated on every page
+///
+/// This could be a good way to save some space in the PDF file.
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Layer {
     pub name: String,
-    /// Please note that the layer operations are not shared between pages.
-    /// And has to be cloned for each page.
     pub operations: Vec<PdfObject>,
     pub creator: Option<String>,
     pub intent: LayerIntent,
     pub usage: LayerSubtype,
 }
 impl LayerType for Layer {
-    fn add_to_layer(&mut self, object: PdfObject) -> Result<(), crate::TuxPdfError> {
-        self.operations.push(object);
+    fn add_to_layer(&mut self, object: impl Into<PdfObject>) -> Result<(), crate::TuxPdfError> {
+        self.operations.push(object.into());
         Ok(())
     }
 }

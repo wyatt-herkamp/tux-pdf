@@ -15,7 +15,13 @@ impl IdType for XObjectId {
     fn new_random() -> Self {
         Self(crate::utils::random::random_character_string(32))
     }
-
+    fn add_random_suffix(self) -> Self {
+        Self(format!(
+            "{}{}",
+            self.0,
+            crate::utils::random::random_character_string(8)
+        ))
+    }
     fn as_str(&self) -> &str {
         &self.0
     }
@@ -49,9 +55,10 @@ impl XObjectMap {
     ) -> Option<XObjectRef<'resources>> {
         self.map.get(id).map(|xobject| xobject.as_ref())
     }
-    pub fn dictionary(&mut self, writer: &mut DocumentWriter) -> Result<Dictionary, TuxPdfError> {
+    /// Writes the XObjects into the pdf file
+    pub(crate) fn dictionary(self, writer: &mut DocumentWriter) -> Result<Dictionary, TuxPdfError> {
         let mut xobject_dict = Dictionary::new();
-        for (id, xobject) in &mut self.map {
+        for (id, xobject) in self.map.into_iter() {
             let dictionary: Object = match xobject {
                 XObject::Image(image) => image.image.into_stream()?.into(),
                 XObject::Form(_) => {

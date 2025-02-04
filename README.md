@@ -22,6 +22,7 @@ Early development stage. Not ready for use.
 - [x] Text Rendering
 - [ ] Fonts
   - [X] Custom Fonts
+  - [ ] Emoji Fonts
   - [ ] Built In Pdf Fonts (They work however, no metrics are provided meaning text is not correctly positioned)
 - [ ] External Objects
   - [X] Images

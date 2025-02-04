@@ -1,6 +1,6 @@
 mod test_utils;
 use chrono::Local;
-use rand::{thread_rng, Rng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use test_utils::{destination_dir, fonts_dir};
 use tux_pdf::{
     document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
@@ -113,7 +113,7 @@ fn table_test() -> anyhow::Result<()> {
         margin: Some(Margin::left_and_right(10f32.pt(), 10f32.pt())),
     };
     table.render(&mut doc, (page_rules, page))?;
-    let mut pdf = doc.save_to_lopdf_document()?;
+    let pdf = doc.write_into_pdf_document_writer()?;
     let mut file = std::fs::File::create(destination_dir().join("table.pdf"))?;
     pdf.save(&mut file)?;
 
@@ -140,11 +140,12 @@ fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
         background_color: Some(WHITE_RGB),
         ..Default::default()
     };
+    let mut random = StdRng::from_os_rng();
     let timestamp = Local::now().to_string();
     let short_timestamp = Local::now().format("%Y-%m-%d %H:%M").to_string();
     let mut actual_rows = Vec::new();
     for number in 0..50 {
-        let location = if thread_rng().gen_bool(0.5) {
+        let location = if random.random_bool(0.5) {
             timestamp.clone()
         } else {
             short_timestamp.clone()
@@ -222,7 +223,7 @@ fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
         margin: Some(Margin::left_and_right(10f32.pt(), 10f32.pt())),
     };
     table.render(&mut doc, (page_rules, page))?;
-    let mut pdf = doc.save_to_lopdf_document()?;
+    let pdf = doc.write_into_pdf_document_writer()?;
     let mut file = std::fs::File::create(
         destination_dir().join("table_test_large_column_but_limited_space.pdf"),
     )?;

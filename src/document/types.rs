@@ -1,12 +1,13 @@
 //! PDF Document Types.
 //!
 //! Structures that represent different Dictionary objects in a PDF document.
-use either::Either;
 mod font;
 pub use font::*;
+mod actions;
+pub use actions::*;
 use tux_pdf_low::{
     dictionary,
-    types::{Dictionary, Object, ObjectId},
+    types::{Dictionary, Object, ObjectId, ReferenceOrObject},
 };
 
 use super::{PageLayout, PageMode};
@@ -51,19 +52,23 @@ pub struct PagesObject {
     ///
     /// Includes Count key that indicates the number of pages in the document
     pub kids: Vec<ObjectId>,
+    pub resources: Option<ObjectId>,
 }
 impl PdfDirectoryType for PagesObject {
     fn dictionary_type_key() -> &'static str {
         "Pages"
     }
     fn into_dictionary(self) -> Dictionary {
-        let PagesObject { kids } = self;
+        let PagesObject { kids, resources } = self;
         let number_of_pages = kids.len() as i64;
         let kids: Vec<_> = kids.into_iter().map(Object::from).collect();
         let mut dict = Dictionary::new();
         dict.set("Type", Object::name(Self::dictionary_type_key()));
         dict.set("Kids", kids);
         dict.set("Count", number_of_pages);
+        if let Some(resources) = resources {
+            dict.set("Resources", resources);
+        }
         dict
     }
 }
@@ -80,6 +85,8 @@ pub struct CatalogObject {
     pub language: Option<String>,
 
     pub oc_properties: Option<OptionalContentProperties>,
+
+    pub open_action: Option<PdfAction>,
 }
 impl PdfDirectoryType for CatalogObject {
     fn dictionary_type_key() -> &'static str {
@@ -92,6 +99,7 @@ impl PdfDirectoryType for CatalogObject {
             language,
             page_mode,
             oc_properties,
+            open_action,
         } = self;
         let mut catalog: Dictionary = dictionary! {
             "Type" => Object::name(Self::dictionary_type_key()),
@@ -105,6 +113,9 @@ impl PdfDirectoryType for CatalogObject {
         if let Some(language) = language {
             catalog.set("Lang", Object::string_literal_owned(language));
         }
+        if let Some(open_action) = open_action {
+            catalog.set("OpenAction", open_action);
+        }
 
         catalog
     }
@@ -112,8 +123,8 @@ impl PdfDirectoryType for CatalogObject {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Resources {
-    pub font: Option<Either<ObjectId, Dictionary>>,
-    pub xobject: Option<Either<ObjectId, Dictionary>>,
+    pub font: Option<ReferenceOrObject<Dictionary>>,
+    pub xobject: Option<ReferenceOrObject<Dictionary>>,
     pub properties: Option<Dictionary>,
 }
 impl PdfDirectoryType for Resources {
@@ -128,10 +139,10 @@ impl PdfDirectoryType for Resources {
         } = self;
         let mut dict = Dictionary::new();
         if let Some(font) = font {
-            dict.set("Font", either_to_object(font));
+            dict.set("Font", font);
         }
         if let Some(xobject) = xobject {
-            dict.set("XObject", either_to_object(xobject));
+            dict.set("XObject", xobject);
         }
         if let Some(properties) = properties {
             dict.set("Properties", properties);
@@ -139,24 +150,17 @@ impl PdfDirectoryType for Resources {
         dict
     }
 }
-fn either_to_object<L, R>(either: Either<L, R>) -> Object
-where
-    L: Into<Object>,
-    R: Into<Object>,
-{
-    match either {
-        Either::Left(left) => left.into(),
-        Either::Right(right) => right.into(),
-    }
-}
 
 /// Page object
 ///
 /// 7.7.3.3 Page Tree
 pub struct Page {
-    pub contents_id: ObjectId,
+    /// An array of content stream object ids
+    ///
+    /// If the array is only 1 it will be written as a single object
+    pub contents_id: Vec<ObjectId>,
     pub parent_id: ObjectId,
-    pub resources_id: ObjectId,
+    pub resources_id: Option<ObjectId>,
     pub media_box: Vec<Object>,
     pub crop_box: Option<Vec<Object>>,
     pub art_box: Option<Vec<Object>>,
@@ -184,10 +188,13 @@ impl PdfDirectoryType for Page {
         let mut dictionary = dictionary! {
             "Type" => Object::name("Page"),
             "Parent" => parent_id,
-            "Resources" => resources_id,
             "MediaBox" => media_box,
-            "Contents" => contents_id
+            "Contents" => Object::maybe_array(contents_id)
         };
+
+        if let Some(resources_id) = resources_id {
+            dictionary.set("Resources", resources_id);
+        }
         if let Some(crop_box) = crop_box {
             dictionary.set("CropBox", crop_box);
         }

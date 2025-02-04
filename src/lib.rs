@@ -64,7 +64,7 @@ pub(crate) mod tests {
     pub fn save_pdf_doc(doc: PdfDocument, test_name: &str) -> anyhow::Result<()> {
         let save_location = destination_dir().join(format!("{}.pdf", test_name));
         let mut file = std::fs::File::create(save_location)?;
-        let mut pdf = doc.save_to_lopdf_document()?;
+        let pdf = doc.write_into_pdf_document_writer()?;
 
         pdf.save(&mut file)?;
 

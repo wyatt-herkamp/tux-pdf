@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use tux_pdf::{
     document::PdfDocument,
     graphics::color::{Color, Rgb},
@@ -7,11 +7,12 @@ include!("test_utils_external.rs");
 
 #[allow(dead_code)]
 pub fn random_color() -> Color {
-    let mut rng = rand::thread_rng();
+    let mut random = StdRng::from_os_rng();
+
     Color::Rgb(Rgb {
-        r: rng.gen_range(0.0..1.0),
-        g: rng.gen_range(0.0..1.0),
-        b: rng.gen_range(0.0..1.0),
+        r: random.random_range(0.0..1.0),
+        g: random.random_range(0.0..1.0),
+        b: random.random_range(0.0..1.0),
         icc_profile: None,
     })
 }
@@ -32,7 +33,7 @@ pub fn create_test_document(name: &str) -> PdfDocument {
 pub fn save_pdf_doc(doc: PdfDocument, test_name: &str) -> anyhow::Result<()> {
     let save_location = destination_dir().join(format!("{}.pdf", test_name));
     let mut file = std::fs::File::create(save_location)?;
-    let mut pdf = doc.save_to_lopdf_document()?;
+    let pdf = doc.write_into_pdf_document_writer()?;
 
     pdf.save(&mut file)?;
 

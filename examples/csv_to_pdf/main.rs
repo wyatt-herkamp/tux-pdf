@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
 
     let first_page = table_page(&mut doc)?;
     table.render(&mut doc, first_page)?;
-    let mut pdf = doc.save_to_lopdf_document()?;
+    let pdf = doc.write_into_pdf_document_writer()?;
     let mut file = std::fs::File::create(output_file)?;
     pdf.save(&mut file)?;
     Ok(())

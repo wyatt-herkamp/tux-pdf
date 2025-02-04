@@ -8,6 +8,7 @@ use crate::{
     types::{
         trailer::{PdfTrailer, StandardTrailer},
         Dictionary, DictionaryIoWriter, DictionaryType, Object, ObjectId, PdfType, PdfVersion,
+        WritableDictionary,
     },
     utils::write::write_object,
 };
@@ -73,8 +74,10 @@ impl PdfDocumentWriter {
                     size: self.max_id + 1,
                 };
                 writer.write_all(b"trailer\n")?;
-
-                trailer.write_to_dictionary(DictionaryIoWriter::from(&mut writer))?;
+                let mut dictionary_writer = DictionaryIoWriter::from(&mut writer);
+                dictionary_writer.start_dictionary()?;
+                trailer.write_to_dictionary(&mut dictionary_writer)?;
+                dictionary_writer.end_dictionary()?;
             }
             xref::XrefType::CrossReferenceTable => {
                 xref.write_as_stream(self.trailer, xref_start, self.max_id, &mut writer)?;

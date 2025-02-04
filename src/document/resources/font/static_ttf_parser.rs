@@ -56,4 +56,31 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn parse_noto_emoji() -> anyhow::Result<()> {
+        static TTF_DATA: &[u8] =
+            include_bytes!("../../../../tests/fonts/Noto_Color_Emoji/NotoColorEmoji-Regular.ttf");
+
+        let face = StaticTtfFace::from_slice(TTF_DATA, 0)?;
+        {
+            let face_ref = face.as_face_ref();
+            let id = face_ref.glyph_index('😊').unwrap();
+            println!("Glyph ID for 😊: {:?}", id);
+
+            let svg = face_ref.glyph_svg_image(id).unwrap();
+
+            println!("SVG for 😊: {:?}", svg.start_glyph_id);
+            println!("SVG for 😊: {:?}", svg.end_glyph_id);
+
+            let svg_as_string = std::str::from_utf8(svg.data).unwrap();
+            // Save the SVG to a file
+            std::fs::write("../emoji.svg", svg_as_string)?;
+        }
+        let debug = DebugFontType(&face);
+        println!("--- Font (tests/fonts/Noto_Color_Emoji/NotoColorEmoji-Regular.ttf) ---");
+        println!("{:#?}", debug);
+
+        Ok(())
+    }
 }

@@ -117,10 +117,8 @@ impl PdfXObjectImageData {
         });
         Ok((img, img_mask))
     }
-    /// Takes mut because I don't think I can drop all image details yet. This will hopefully be changed in the future.
-    ///
-    /// But for now it will take the image_data to hopefully prevent as much memory usage as possible.
-    pub fn into_stream(&mut self) -> Result<Stream, TuxPdfError> {
+
+    pub fn into_stream(mut self) -> Result<Stream, TuxPdfError> {
         if self.image_data.is_empty() {
             todo!("Handle empty image data")
         }

@@ -220,7 +220,7 @@ impl PdfTaffyLayout {
             section_name: Some("LayoutOutline".to_string()),
         };
 
-        page.add_to_layer(graphics_items.into())?;
+        page.add_to_layer(graphics_items)?;
         Ok(())
     }
 }

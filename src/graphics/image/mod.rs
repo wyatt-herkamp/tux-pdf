@@ -85,7 +85,7 @@ impl LayoutItemType for PdfImage {
     where
         Self: Sized,
     {
-        page.add_to_layer(self.into())
+        page.add_to_layer(self)
     }
 }
 impl HasPosition for PdfImage {

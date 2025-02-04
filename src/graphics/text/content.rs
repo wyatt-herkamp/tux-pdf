@@ -126,6 +126,8 @@ impl TextItem {
         writer: &mut OperationWriter,
     ) -> Result<Size, TuxPdfError> {
         let state = write_modifiers(self.modifiers, current_state, writer)?;
+
+        debug!(?state, "Text State for Text Item");
         let text_size = state
             .font_type
             .calculate_size_of_text(&self.text, state.as_ref());
@@ -154,6 +156,13 @@ pub struct TextLine {
     pub modifiers: Vec<TextModifier>,
 }
 impl TextLine {
+    /// Adds an item to the line using a builder pattern
+    ///
+    /// If you want add an item without that pattern use `items.push(item)`
+    pub fn add_item(mut self, item: impl Into<TextItem>) -> Self {
+        self.items.push(item.into());
+        self
+    }
     pub(super) fn write(
         self,
         current_state: &TextBlockState,
@@ -234,8 +243,12 @@ impl TextLine {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TextBlockContent(pub Vec<TextLine>);
 impl TextBlockContent {
-    pub fn add_line(&mut self, line: impl Into<TextLine>) {
+    /// Adds a line to the block using a builder pattern
+    ///
+    /// If you want add a line without that pattern use `lines.push(line)`
+    pub fn add_line(mut self, line: impl Into<TextLine>) -> Self {
         self.0.push(line.into());
+        self
     }
 
     pub(super) fn apply_max_width_inner(
@@ -319,7 +332,22 @@ impl From<Vec<String>> for TextBlockContent {
         Self(lines)
     }
 }
-
+impl From<String> for TextLine {
+    fn from(text: String) -> Self {
+        Self {
+            items: vec![TextItem::new(text)],
+            modifiers: Vec::new(),
+        }
+    }
+}
+impl From<&str> for TextLine {
+    fn from(text: &str) -> Self {
+        Self {
+            items: vec![TextItem::new(text)],
+            modifiers: Vec::new(),
+        }
+    }
+}
 fn str_to_lines(text: &str) -> Vec<TextLine> {
     text.lines()
         .map(|line| TextLine {

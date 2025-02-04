@@ -270,7 +270,7 @@ impl Table {
             if tracing::enabled!(Level::TRACE) {
                 tracing::trace!(?graphics_items);
             }
-            page.add_to_layer(graphics_items.into())?;
+            page.add_to_layer(graphics_items)?;
             let mut row_iter = grid_layout.row_iter();
             {
                 // Render head row
@@ -287,7 +287,7 @@ impl Table {
                             style: header_styles.clone().into_owned(),
                         })
                 {
-                    page.add_to_layer(text.into())?;
+                    page.add_to_layer(text)?;
                 }
             }
             for (row, locations) in rows.into_iter().zip(row_iter) {
@@ -307,7 +307,7 @@ impl Table {
                                 position: location,
                                 style: row_text_style.clone(),
                             };
-                            page.add_to_layer(text.into())?;
+                            page.add_to_layer(text)?;
                         }
                         _ => {}
                     }

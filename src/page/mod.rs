@@ -14,13 +14,13 @@ pub struct PdfPage {
     pub crop_box: Option<OutlineRect>,
     pub rotate: Option<i64>,
     /// You can think of this as the "content" of the page
-    pub ops: Vec<PdfObject>,
+    pub contents: Vec<PdfObject>,
     /// Layers that are present on this page
     pub layers: Vec<LayerId>,
 }
 impl LayerType for PdfPage {
-    fn add_to_layer(&mut self, object: PdfObject) -> Result<(), crate::TuxPdfError> {
-        self.ops.push(object);
+    fn add_to_layer(&mut self, object: impl Into<PdfObject>) -> Result<(), crate::TuxPdfError> {
+        self.contents.push(object.into());
         Ok(())
     }
 }
@@ -31,7 +31,7 @@ impl PdfPage {
 
         Self {
             media_box,
-            ops: Vec::new(),
+            contents: Vec::new(),
             layers: Vec::new(),
             ..Default::default()
         }

@@ -38,18 +38,18 @@ pub fn main() -> anyhow::Result<()> {
             ..Default::default()
         })
         .with_position(PdfPosition::new(10.0.pt(), 800.0.pt()));
-    page.add_to_layer(text.into())?;
+    page.add_to_layer(text)?;
 
     let image = PdfImage::new(code_image_ref)
         .with_position(PdfPosition::new(10.0.pt(), 100.0.pt()))
         .with_scape(2f32, 2f32)
         .with_dpi(300.0);
 
-    page.add_to_layer(image.into())?;
+    page.add_to_layer(image)?;
 
     doc.add_page(page);
 
-    let mut pdf = doc.save_to_lopdf_document()?;
+    let pdf = doc.write_into_pdf_document_writer()?;
 
     let mut file = File::create(args.output_file)?;
 

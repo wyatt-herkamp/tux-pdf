@@ -5,8 +5,8 @@ use crate::{
 };
 pub use keys::*;
 use tux_pdf_low::{
-    content::{Content, Operation},
-    types::Object,
+    content::Operation,
+    types::{Dictionary, Object, PdfType, Stream},
 };
 
 use super::{group::GraphicItems, image::PdfImage, GraphicStyles, TextBlock, TextOperations};
@@ -45,22 +45,35 @@ impl PdfObjectType for PdfObject {
         }
         Ok(())
     }
+
+    fn calculate_number_of_pdf_objects(&self) -> usize {
+        match self {
+            PdfObject::TextBlock(block) => block.calculate_number_of_pdf_objects(),
+            PdfObject::NewLine => 1,
+            PdfObject::Graphics(graphic) => graphic.calculate_number_of_pdf_objects(),
+            PdfObject::Styles(styles) => styles.calculate_number_of_pdf_objects(),
+            PdfObject::Image(pdf_image_operation) => {
+                pdf_image_operation.calculate_number_of_pdf_objects()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct OperationWriter {
     pub(crate) operations: Vec<Operation>,
-    /// The index within will be used to determine its id in the resources
-    pub(crate) layers: Vec<LayerId>,
 }
-impl From<OperationWriter> for Content {
+impl From<OperationWriter> for Vec<Operation> {
     fn from(writer: OperationWriter) -> Self {
-        Content {
-            operations: writer.operations,
-        }
+        writer.operations
     }
 }
 impl OperationWriter {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            operations: Vec::with_capacity(capacity),
+        }
+    }
     pub fn add_operation(&mut self, operation: impl OperationKeyType, operands: Vec<Object>) {
         self.operations.push(operation.to_operation(operands));
     }
@@ -82,7 +95,6 @@ impl OperationWriter {
     ///
     /// Ensure to call [Self::end_section] after this to close the layer
     pub fn start_layer(&mut self, layer_id: LayerId) {
-        self.layers.push(layer_id.clone());
         self.add_operation(
             OperationKeys::BeginLayer,
             vec![Object::name("OC".as_bytes().to_vec()), layer_id.into()],
@@ -103,6 +115,11 @@ impl OperationWriter {
     pub fn end_section(&mut self) {
         self.push_empty_op(OperationKeys::EndSection);
     }
+
+    pub(crate) fn into_stream(self, dictionary: Dictionary) -> Result<Stream, TuxPdfError> {
+        let stream_content = self.operations.write_to_vec()?;
+        Ok(Stream::new(dictionary, stream_content))
+    }
 }
 /// A type that can be written to a pdf containing a few different types of objects
 ///
@@ -115,6 +132,10 @@ pub trait PdfObjectType {
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError>;
+
+    fn calculate_number_of_pdf_objects(&self) -> usize {
+        1
+    }
 }
 /// A type that can contain pdf objects such as pages or layers
 pub trait LayerType {
@@ -122,5 +143,5 @@ pub trait LayerType {
     ///
     /// # Errors
     /// Currently this function does not return any errors however a result is used to allow for future expansion
-    fn add_to_layer(&mut self, object: PdfObject) -> Result<(), TuxPdfError>;
+    fn add_to_layer(&mut self, object: impl Into<PdfObject>) -> Result<(), TuxPdfError>;
 }

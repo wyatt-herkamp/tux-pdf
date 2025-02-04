@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+pub mod stream_header;
 pub mod trailer;
 use crate::LowTuxPdfError;
 
@@ -64,20 +65,23 @@ impl Dictionary {
     pub fn writer(&mut self) -> DictionaryWriterToDictionary {
         DictionaryWriterToDictionary { dict: self }
     }
-    pub fn into_iter(self) -> impl Iterator<Item = (Name, Object)> {
+}
+impl IntoIterator for Dictionary {
+    type Item = (Name, Object);
+    type IntoIter = indexmap::map::IntoIter<Name, Object>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
-impl<N, O, I> From<I> for Dictionary
-where
-    N: Into<Name>,
-    O: Into<Object>,
-    I: IntoIterator<Item = (N, O)>,
-{
-    fn from(iter: I) -> Self {
+impl FromIterator<(Name, Object)> for Dictionary {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (Name, Object)>,
+    {
         let mut dict = Dictionary::default();
         for (key, value) in iter {
-            dict.0.insert(key.into(), value.into());
+            dict.0.insert(key, value);
         }
         dict
     }
@@ -145,7 +149,7 @@ pub trait WritableDictionary {
 pub trait DictionaryType {
     fn get_type(&self) -> Option<&NameRef>;
 
-    fn from_dictionary(dict: Dictionary) -> Result<Self, crate::LowTuxPdfError>
+    fn from_dictionary(dict: &mut Dictionary) -> Result<Self, crate::LowTuxPdfError>
     where
         Self: Sized;
     /// Write the contents of this object to a dictionary
@@ -153,27 +157,19 @@ pub trait DictionaryType {
     /// Do not forget to call start_dictionary before writing the contents
     ///
     /// Do not forget to call end_dictionary after writing the contents
-    fn write_to_dictionary<WD>(self, dict: WD) -> Result<(), crate::LowTuxPdfError>
+    fn write_to_dictionary<WD>(self, dict: &mut WD) -> Result<(), crate::LowTuxPdfError>
     where
         WD: WritableDictionary;
-    fn write_to_dictionary_borrowed<WD>(&self, dict: WD) -> Result<(), crate::LowTuxPdfError>
+    fn write_to_dictionary_borrowed<WD>(&self, dict: &mut WD) -> Result<(), crate::LowTuxPdfError>
     where
         WD: WritableDictionary;
 
-    fn write_dictionary_to_writer<W>(self, writer: &mut W) -> Result<(), crate::LowTuxPdfError>
-    where
-        W: std::io::Write,
-        Self: Sized,
-    {
-        self.write_to_dictionary(DictionaryIoWriter::from(writer))?;
-        Ok(())
-    }
     fn into_dictionary(self) -> Dictionary
     where
         Self: Sized,
     {
         let mut dict = Dictionary::default();
-        self.write_to_dictionary(dict.writer()).unwrap();
+        self.write_to_dictionary(&mut dict.writer()).unwrap();
         dict
     }
 }

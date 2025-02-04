@@ -1,6 +1,6 @@
-use crate::types::{Name, NameRef, Object, ObjectId};
+use crate::types::{Name, NameRef, ObjectId};
 
-use super::{DictionaryType, WritableDictionary};
+use super::{Dictionary, DictionaryType, WritableDictionary};
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PdfTrailer {
     pub root: Option<ObjectId>,
@@ -15,18 +15,17 @@ impl DictionaryType for StandardTrailer {
     fn get_type(&self) -> Option<&NameRef> {
         None
     }
-    fn from_dictionary(dict: super::Dictionary) -> Result<Self, crate::LowTuxPdfError>
+    fn from_dictionary(_dict: &mut Dictionary) -> Result<Self, crate::LowTuxPdfError>
     where
         Self: Sized,
     {
         todo!()
     }
 
-    fn write_to_dictionary<WD>(self, mut dict: WD) -> Result<(), crate::LowTuxPdfError>
+    fn write_to_dictionary<WD>(self, dict: &mut WD) -> Result<(), crate::LowTuxPdfError>
     where
         WD: WritableDictionary,
     {
-        dict.start_dictionary()?;
         if let Some(root) = self.trailer.root {
             dict.write_value(Name::from("Root"), root)?;
         }
@@ -34,10 +33,9 @@ impl DictionaryType for StandardTrailer {
         if let Some(info) = self.trailer.info {
             dict.write_value(Name::from("Info"), info)?;
         }
-        dict.write_value(Name::from("Size"), self.size as i64)?;
-        dict.end_dictionary()
+        dict.write_value(Name::from("Size"), self.size)
     }
-    fn write_to_dictionary_borrowed<WD>(&self, dict: WD) -> Result<(), crate::LowTuxPdfError>
+    fn write_to_dictionary_borrowed<WD>(&self, dict: &mut WD) -> Result<(), crate::LowTuxPdfError>
     where
         WD: WritableDictionary,
     {
@@ -58,25 +56,23 @@ pub struct XRefPdfTrailer {
     /// Index
     pub index: Vec<i64>,
     pub filter: Option<Name>,
-    pub length: usize,
 }
 
 impl DictionaryType for XRefPdfTrailer {
     fn get_type(&self) -> Option<&NameRef> {
         Some("XRef".as_ref())
     }
-    fn from_dictionary(dict: super::Dictionary) -> Result<Self, crate::LowTuxPdfError>
+    fn from_dictionary(_dict: &mut Dictionary) -> Result<Self, crate::LowTuxPdfError>
     where
         Self: Sized,
     {
         todo!()
     }
 
-    fn write_to_dictionary<WD>(self, mut dict: WD) -> Result<(), crate::LowTuxPdfError>
+    fn write_to_dictionary<WD>(self, dict: &mut WD) -> Result<(), crate::LowTuxPdfError>
     where
         WD: WritableDictionary,
     {
-        dict.start_dictionary()?;
         dict.write_value("Type", Name::from("XRef"))?;
         if let Some(root) = self.trailer.root {
             dict.write_value("Root", root)?;
@@ -94,11 +90,9 @@ impl DictionaryType for XRefPdfTrailer {
         if let Some(filter) = self.filter {
             dict.write_value("Filter", filter)?;
         }
-        dict.write_value("Length", self.length as i64)?;
-
-        dict.end_dictionary()
+        Ok(())
     }
-    fn write_to_dictionary_borrowed<WD>(&self, dict: WD) -> Result<(), crate::LowTuxPdfError>
+    fn write_to_dictionary_borrowed<WD>(&self, dict: &mut WD) -> Result<(), crate::LowTuxPdfError>
     where
         WD: WritableDictionary,
     {

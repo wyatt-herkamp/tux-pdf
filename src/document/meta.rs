@@ -7,16 +7,33 @@ use crate::{
     utils::{strum_into_name, IsEmpty},
 };
 
-use super::{conformance::PdfConformance, types::CatalogObject};
+use super::{
+    conformance::PdfConformance,
+    types::{CatalogObject, PdfAction},
+};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct PdfMetadata {
     /// Document information
     pub info: PdfDocumentInfo,
     /// XMP Metadata. Is ignored on save if the PDF conformance does not allow XMP
     pub xmp: Option<XmpMetadata>,
-}
 
+    pub catalog_info: CatalogInfo,
+}
+impl PdfMetadata {
+    pub fn set_open_action(&mut self, action: impl Into<PdfAction>) {
+        self.catalog_info.open_action = Some(action.into());
+    }
+
+    pub fn add_open_action(&mut self, action: impl Into<PdfAction>) {
+        if let Some(open_action) = &mut self.catalog_info.open_action {
+            open_action.next.push(action.into());
+        } else {
+            self.set_open_action(action);
+        }
+    }
+}
 #[derive(Debug, PartialEq, Clone)]
 pub struct PdfDocumentInfo {
     /// Is the document trapped?
@@ -130,11 +147,12 @@ pub enum PageMode {
     UseAttachments,
 }
 strum_into_name!(PageMode);
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CatalogInfo {
     pub page_layout: PageLayout,
     pub language: Option<String>,
     pub page_mode: PageMode,
+    pub open_action: Option<PdfAction>,
 }
 impl CatalogInfo {
     pub fn create_catalog_object(self, pages: ObjectId) -> CatalogObject {
@@ -142,12 +160,14 @@ impl CatalogInfo {
             page_layout,
             language,
             page_mode,
+            open_action,
         } = self;
         CatalogObject {
             pages,
             page_layout,
             language,
             page_mode,
+            open_action,
             ..Default::default()
         }
     }

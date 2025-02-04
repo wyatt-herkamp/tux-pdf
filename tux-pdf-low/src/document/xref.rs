@@ -46,7 +46,7 @@ impl Xref {
         let trailer_size = max_id + 1;
 
         let filter = XRefStreamFilter::None;
-        let (stream, stream_length, indexes) = create_xref_stream(&self, filter)?;
+        let (stream, indexes) = create_xref_stream(&self, filter)?;
         let filter = filter.into_name();
 
         let trailer = XRefPdfTrailer {
@@ -55,7 +55,6 @@ impl Xref {
             w: vec![1, 4, 2],
             index: indexes,
             filter,
-            length: stream_length,
         };
         let cross_reference_stream = Stream {
             dictionary: trailer,
@@ -213,7 +212,7 @@ impl XRefStreamFilter {
 pub fn create_xref_stream(
     xref: &Xref,
     filter: XRefStreamFilter,
-) -> Result<(Vec<u8>, usize, Vec<i64>), LowTuxPdfError> {
+) -> Result<(Vec<u8>, Vec<i64>), LowTuxPdfError> {
     let mut xref_sections = Vec::new();
     let mut xref_section = XrefSection::new(0);
 
@@ -252,7 +251,7 @@ pub fn create_xref_stream(
                     // Type 0
                     xref_stream.push(0);
                     xref_stream.extend(obj_id.to_be_bytes());
-                    xref_stream.extend(vec![0, 0]); // TODO add generation number
+                    xref_stream.extend(vec![0, 0]);
                 }
                 XrefEntry::UnusableFree => {
                     // Type 0
@@ -278,7 +277,7 @@ pub fn create_xref_stream(
     }
 
     // The end of line character should not be counted, added later.
-    let stream_length = xref_stream.len();
+    //let stream_length: usize = xref_stream.len();
 
     if filter == XRefStreamFilter::ASCIIHexDecode {
         xref_stream = xref_stream
@@ -287,7 +286,7 @@ pub fn create_xref_stream(
             .collect::<Vec<u8>>();
     }
 
-    Ok((xref_stream, stream_length, xref_index))
+    Ok((xref_stream, xref_index))
 }
 
 pub fn write_xref_section<W>(file: &mut W, xref: &Xref) -> Result<(), LowTuxPdfError>

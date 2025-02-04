@@ -51,17 +51,14 @@ impl PdfType for Operation {
         Ok(())
     }
 }
-pub struct Content {
-    pub operations: Vec<Operation>,
-}
 
-impl PdfType for Content {
+impl PdfType for Vec<Operation> {
     fn write<W>(self, writer: &mut W) -> Result<(), crate::LowTuxPdfError>
     where
         W: std::io::Write,
     {
         let mut first_operation = true;
-        for operation in self.operations {
+        for operation in self {
             if first_operation {
                 first_operation = false;
             } else {
@@ -77,7 +74,7 @@ impl PdfType for Content {
         W: std::io::Write,
     {
         let mut first_operation = true;
-        for operation in &self.operations {
+        for operation in self.iter() {
             if first_operation {
                 first_operation = false;
             } else {

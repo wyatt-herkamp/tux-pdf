@@ -2,7 +2,7 @@ use std::fs::File;
 
 use test_utils::{destination_dir, init_logger};
 use tux_pdf_low::{
-    content::{Content, Operation},
+    content::Operation,
     document::PdfDocumentWriter,
     types::{Dictionary, Name, PdfString, PdfType, Stream},
 };
@@ -23,15 +23,13 @@ pub fn hello_world() -> anyhow::Result<()> {
     let mut resources = Dictionary::new();
     resources.set("Font", font_resources);
     let resources_id = doc.add_object(resources);
-    let content = Content {
-        operations: vec![
-            Operation::new_empty("BT"),
-            Operation::new("Tf", vec![Name::from("F1").into(), 48.into()]),
-            Operation::new("Td", vec![100.into(), 600.into()]),
-            Operation::new("Tj", vec![PdfString::literal("Hello World!").into()]),
-            Operation::new_empty("ET"),
-        ],
-    };
+    let content = vec![
+        Operation::new_empty("BT"),
+        Operation::new("Tf", vec![Name::from("F1").into(), 48.into()]),
+        Operation::new("Td", vec![100.into(), 600.into()]),
+        Operation::new("Tj", vec![PdfString::literal("Hello World!").into()]),
+        Operation::new_empty("ET"),
+    ];
     let content_stream = Stream::new(Dictionary::default(), content.write_to_vec()?);
     let content_id = doc.add_object(content_stream);
 

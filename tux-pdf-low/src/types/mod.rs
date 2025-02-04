@@ -22,7 +22,9 @@ pub trait PdfType {
     fn size_hint(&self) -> usize {
         0
     }
-
+    fn exact_size(&mut self) -> Option<usize> {
+        None
+    }
     fn write_to_vec(self) -> Result<Vec<u8>, LowTuxPdfError>
     where
         Self: Sized,
@@ -42,6 +44,9 @@ impl PdfType for Vec<u8> {
     }
     fn size_hint(&self) -> usize {
         self.len()
+    }
+    fn exact_size(&mut self) -> Option<usize> {
+        Some(self.len())
     }
     fn write_borrowed<W>(&self, writer: &mut W) -> Result<(), LowTuxPdfError>
     where
@@ -92,11 +97,13 @@ macro_rules! copy_encode {
     };
 }
 pub(crate) use copy_encode;
+/// A trait for the PDF Object Types such as Numbers, Booleans, Arrays, Dictionaries, etc.
 pub trait PdfObjectType {
     fn encode<W>(self, writer: &mut W) -> Result<(), LowTuxPdfError>
     where
         W: std::io::Write,
         Self: Sized;
+
     fn encode_borrowed<W>(&self, writer: &mut W) -> Result<(), LowTuxPdfError>
     where
         W: std::io::Write;
@@ -153,53 +160,50 @@ impl PdfObjectType for bool {
     }
 }
 
-impl PdfObjectType for f32 {
-    fn encode<W>(self, writer: &mut W) -> Result<(), LowTuxPdfError>
-    where
-        W: std::io::Write,
-        Self: Sized,
-    {
-        let mut buffer = ryu::Buffer::new();
-        let s = buffer.format(self);
-        writer.write_all(s.as_bytes())?;
-        Ok(())
-    }
+macro_rules! num_object_type {
+    (
+        $buffer:ty => $name:literal => [
+            $( $i:ty), *
+        ]
+    ) => {
+        $(
+            impl PdfObjectType for $i {
+                fn encode<W>(self, writer: &mut W) -> Result<(), LowTuxPdfError>
+                where
+                    W: std::io::Write,
+                    Self: Sized,
+                {
+                    let mut buffer = <$buffer>::new();
+                    let s = buffer.format(self);
+                    writer.write_all(s.as_bytes())?;
+                    Ok(())
+                }
+                copy_encode!();
 
-    copy_encode!();
+                fn requires_end_separator(&self) -> bool {
+                    true
+                }
+                fn requires_separator(&self) -> bool {
+                    true
+                }
 
-    fn requires_end_separator(&self) -> bool {
-        true
-    }
-    fn requires_separator(&self) -> bool {
-        true
-    }
-    fn type_name(&self) -> &'static str {
-        "Real"
-    }
+                fn type_name(&self) -> &'static str {
+                    concat!($name,"<", stringify!($i), ">")
+                }
+            }
+        )*
+    };
 }
-impl PdfObjectType for i64 {
-    fn encode<W>(self, writer: &mut W) -> Result<(), LowTuxPdfError>
-    where
-        W: std::io::Write,
-        Self: Sized,
-    {
-        let mut buffer = itoa::Buffer::new();
-        let s = buffer.format(self);
-        writer.write_all(s.as_bytes())?;
-        Ok(())
-    }
-    copy_encode!();
-
-    fn requires_end_separator(&self) -> bool {
-        true
-    }
-    fn requires_separator(&self) -> bool {
-        true
-    }
-
-    fn type_name(&self) -> &'static str {
-        "Number"
-    }
+num_object_type! {
+    itoa::Buffer => "Number" => [
+        i8, i16, i32, i64,
+        u8, u16, u32, u64
+    ]
+}
+num_object_type! {
+    ryu::Buffer => "Real" => [
+        f64, f32
+    ]
 }
 impl<T> PdfObjectType for Vec<T>
 where

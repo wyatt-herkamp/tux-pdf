@@ -65,6 +65,13 @@ impl IdType for FontId {
     fn new_random() -> Self {
         Self(crate::utils::random::random_character_string(32))
     }
+    fn add_random_suffix(self) -> Self {
+        Self(format!(
+            "{}-{}",
+            self.0,
+            crate::utils::random::random_character_string(8)
+        ))
+    }
 
     fn as_str(&self) -> &str {
         &self.0
@@ -76,26 +83,16 @@ impl IdType for FontId {
         "Font"
     }
 }
-impl TryFrom<String> for FontId {
-    type Error = TuxPdfError;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        // Must be 32 characters long and alphanumeric
-        if value.len() != 32 {
-            return Err(TuxPdfError::InvalidObjectId(value));
-        }
-        if !value.chars().all(|c| c.is_alphanumeric()) {
-            return Err(TuxPdfError::InvalidObjectId(value));
-        }
-        Ok(Self(value))
+impl From<&str> for FontId {
+    fn from(s: &str) -> Self {
+        Self(s.to_owned())
     }
 }
-impl TryFrom<&str> for FontId {
-    type Error = TuxPdfError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::try_from(value.to_owned())
+impl From<String> for FontId {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }
-
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct PdfFontMap {
     pub(crate) map: BTreeMap<FontId, ParsedFont>,
@@ -129,7 +126,11 @@ impl PdfFontMap {
         font: impl Into<ExternalFont>,
     ) -> Result<FontRef, TuxPdfError> {
         let font = font.into();
-        let font_id = self.new_id();
+        let font_id = if let Some(font_name) = font.font_name() {
+            self.new_id_with_prefix(FontId(font_name))
+        } else {
+            self.new_id()
+        };
         self.map.insert(
             font_id.clone(),
             ParsedFont {
@@ -140,39 +141,39 @@ impl PdfFontMap {
 
         Ok(FontRef::External(font_id))
     }
-    /// Register an external font.
-    pub fn register_parsed_external_font(&mut self, font: ParsedFont) -> FontRef {
-        let font_id = self.new_id();
-        self.map.insert(font_id.clone(), font);
-        FontRef::External(font_id)
-    }
-    pub fn register_external_font_with_id(
-        &mut self,
-        font_id: FontId,
-        font: ParsedFont,
-    ) -> Result<(), TuxPdfError> {
-        if self.has_id(&font_id) {
-            return Err(TuxPdfError::ObjectCollectionError(font_id.0));
-        }
-        self.map.insert(font_id, font);
 
-        Ok(())
+    pub fn register_external_font_with_name(
+        &mut self,
+        name: impl Into<String>,
+        font: impl Into<ExternalFont>,
+    ) -> Result<FontRef, TuxPdfError> {
+        let font = font.into();
+        let font_id = self.new_id_with_prefix(FontId(name.into()));
+        self.map.insert(
+            font_id.clone(),
+            ParsedFont {
+                font,
+                font_name: font_id.0.clone(),
+            },
+        );
+
+        Ok(FontRef::External(font_id))
     }
 
     pub fn get_external_font(&self, font_id: &FontId) -> Option<&ParsedFont> {
         self.map.get(font_id)
     }
-    pub fn dictionary(&self, writer: &mut DocumentWriter) -> Dictionary {
+    pub(crate) fn dictionary(self, writer: &mut DocumentWriter) -> Dictionary {
         let mut dict = Dictionary::new();
-        for (font_id, font) in &self.map {
+        for (font_id, font) in self.map {
             let font_dictionary = font.dictionary(writer);
             let font_direct_id = writer.insert_object(Object::from(font_dictionary));
             dict.set(font_id.0.clone(), font_direct_id);
         }
         for (font_id, font_def) in self
             .registered_builtin_fonts
-            .iter()
-            .map(|f| (f.dedicated_font_id(), Dictionary::from(*f)))
+            .into_iter()
+            .map(|f| (f.dedicated_font_id(), Dictionary::from(f)))
         {
             let font_direct_id = writer.insert_object(font_def.into());
             dict.set(font_id.to_owned(), font_direct_id);
@@ -298,7 +299,7 @@ impl FontType for ParsedFont {
     }
 }
 impl ParsedFont {
-    pub fn dictionary(&self, doc: &mut DocumentWriter) -> Dictionary {
+    pub(crate) fn dictionary(self, doc: &mut DocumentWriter) -> Dictionary {
         let bytes = self.font.font_bytes().to_vec();
         let font_stream = Stream::new(
             dictionary! {
@@ -563,6 +564,7 @@ pub(crate) mod font_tests {
                 .field("ascender", &self.0.ascender())
                 .field("descender", &self.0.descender())
                 .field("glyph_count", &self.0.glyph_count())
+                .field("font_name", &self.0.font_name())
                 .finish()
         }
     }

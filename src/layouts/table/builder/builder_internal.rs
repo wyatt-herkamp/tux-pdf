@@ -222,13 +222,6 @@ impl TableLayoutBuilder {
             return Ok(false);
         }
         self.current_y = next_y;
-        let y_starting_point = if self.rows.is_empty() {
-            self.current_y
-        } else {
-            let last_row = self.rows.last().unwrap();
-            last_row.content_start_y - last_row.height
-        };
-
         self.recaclulate_columns(column_sizes)?;
 
         self.rows.push(GridBuilderRow {
@@ -238,7 +231,7 @@ impl TableLayoutBuilder {
                     .cell_content_padding
                     .vertical_value()
                     .unwrap_or_default(),
-            content_start_y: y_starting_point,
+            content_start_y: self.current_y,
             height: row_height,
             styles: style,
         });

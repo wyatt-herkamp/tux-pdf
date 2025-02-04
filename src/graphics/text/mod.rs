@@ -64,7 +64,7 @@ impl LayoutItemType for TextBlock {
     where
         Self: Sized,
     {
-        page.add_to_layer(self.into())
+        page.add_to_layer(self)
     }
 }
 impl HasPosition for TextBlock {
@@ -76,23 +76,18 @@ impl HasPosition for TextBlock {
         self.position = position;
     }
 }
+impl<T> From<T> for TextBlock
+where
+    T: Into<TextBlockContent>,
+{
+    fn from(content: T) -> Self {
+        Self {
+            content: content.into(),
+            ..Default::default()
+        }
+    }
+}
 
-impl From<String> for TextBlock {
-    fn from(text: String) -> Self {
-        Self {
-            content: text.into(),
-            ..Default::default()
-        }
-    }
-}
-impl From<&str> for TextBlock {
-    fn from(text: &str) -> Self {
-        Self {
-            content: text.into(),
-            ..Default::default()
-        }
-    }
-}
 impl TextBlock {
     pub fn with_style(mut self, style: TextStyle) -> Self {
         self.style = style;
@@ -117,8 +112,8 @@ impl TextBlock {
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
         writer.push_empty_op(OperationKeys::SaveGraphicsState);
-
-        let mut line_iterator = lines.into_iter().peekable();
+        // We reverse the array because the starting position is at the bottom left so we need to start from the bottom
+        let mut line_iterator = lines.into_iter().rev().peekable();
         while let Some(line) = line_iterator.next() {
             let restore = if !line.modifiers.is_empty() {
                 writer.push_empty_op(OperationKeys::SaveGraphicsState);
@@ -131,7 +126,7 @@ impl TextBlock {
                 writer.push_empty_op(OperationKeys::RestoreGraphicsState);
             }
             if line_iterator.peek().is_some() {
-                let line_height = -(line_size.height + line_spacing);
+                let line_height = line_size.height + line_spacing;
 
                 debug!(?line_height, "Line Height");
                 writer.add_operation(
@@ -256,9 +251,9 @@ mod tests {
                 },
         };
         let mut page = PdfPage::new_from_page_size(A4);
-        page.add_to_layer(text_block.into())?;
+        page.add_to_layer(text_block)?;
         doc.add_page(page);
-        let mut pdf = doc.save_to_lopdf_document()?;
+        let pdf = doc.write_into_pdf_document_writer()?;
 
         let mut file = std::fs::File::create("target/test_max_width.pdf")?;
 

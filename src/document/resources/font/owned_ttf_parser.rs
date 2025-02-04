@@ -149,6 +149,9 @@ mod tests {
 
             let debug = DebugFontType(&pdf_ttf_font);
             println!("--- Font ({}) ---", path.display());
+            for ele in pdf_ttf_font.as_face_ref().names().into_iter() {
+                println!("{:?}", ele);
+            }
             println!("{:#?}", debug);
         }
         Ok(())

@@ -1,4 +1,4 @@
-use tracing::level_filters::LevelFilter;
+// Utility functions for the tests. These do not reference the crate itself and are all marked as allow(dead_code)
 
 #[allow(dead_code)]
 pub fn init_logger() {
@@ -48,5 +48,5 @@ pub fn destination_dir() -> std::path::PathBuf {
 
 #[allow(dead_code)]
 pub fn does_end_with_ttf(path: impl AsRef<std::path::Path>) -> bool {
-    path.as_ref().extension().map_or(false, |ext| ext == "ttf")
+    path.as_ref().extension().is_some_and(|ext| ext == "ttf")
 }

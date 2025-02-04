@@ -27,6 +27,8 @@ pub trait ExternalLoadedFont {
     fn glyph_metrics(&self, glyph_id: u16) -> Option<GlyphMetrics>;
 
     fn font_bytes(&self) -> &[u8];
+
+    fn font_name(&self) -> Option<String>;
 }
 pub(crate) trait TtfParserFont {
     fn as_face_ref(&self) -> &ttf_parser::Face<'_>;
@@ -100,6 +102,25 @@ where
     fn font_bytes(&self) -> &[u8] {
         self.as_face_ref().raw_face().data
     }
+    fn font_name(&self) -> Option<String> {
+        let family_name = self
+            .as_face_ref()
+            .names()
+            .get(1)
+            .and_then(|name| name.to_string());
+        let sub_family_name = self
+            .as_face_ref()
+            .names()
+            .get(2)
+            .and_then(|name| name.to_string());
+        match (family_name, sub_family_name) {
+            (Some(family_name), Some(sub_family_name)) => {
+                Some(format!("{}-{}", family_name, sub_family_name))
+            }
+            (Some(family_name), None) => Some(family_name),
+            _ => None,
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, From)]
 pub enum ExternalFont {
@@ -165,6 +186,12 @@ impl ExternalLoadedFont for ExternalFont {
         match self {
             ExternalFont::OwnedTtfParser(face) => face.font_bytes(),
             ExternalFont::StaticTtfParser(face) => face.font_bytes(),
+        }
+    }
+    fn font_name(&self) -> Option<String> {
+        match self {
+            ExternalFont::OwnedTtfParser(face) => face.font_name(),
+            ExternalFont::StaticTtfParser(face) => face.font_name(),
         }
     }
 }

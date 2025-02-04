@@ -6,7 +6,7 @@ use std::{
 
 use crate::LowTuxPdfError;
 
-use super::PdfObjectType;
+use super::{PdfObjectType, Stream};
 
 #[inline(always)]
 fn encode_name_byte<W>(byte: u8, writer: &mut W) -> Result<(), LowTuxPdfError>
@@ -124,6 +124,21 @@ impl PdfObjectType for Name {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextOrTextStream {
+    /// A text object
+    Text(PdfString),
+    /// A stream object containing text
+    TextStream(Stream),
+}
+impl<T> From<T> for TextOrTextStream
+where
+    T: Into<PdfString>,
+{
+    fn from(value: T) -> Self {
+        Self::Text(value.into())
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum PdfString {
     /// Using PdfString::Literal directly will not escape the string

@@ -1,6 +1,9 @@
 use crate::LowTuxPdfError;
 
-use super::{dictionary::Dictionary, DictionaryIoWriter, DictionaryType, PdfObjectType, PdfType};
+use super::{
+    dictionary::Dictionary, DictionaryIoWriter, DictionaryType, PdfObjectType, PdfType,
+    WritableDictionary,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stream<D = Dictionary, Content: PdfType = Vec<u8>> {
@@ -108,9 +111,15 @@ where
         Self: Sized,
     {
         {
-            let dictionary_writer = DictionaryIoWriter { writer };
+            let mut dictionary_writer = DictionaryIoWriter { writer };
+            dictionary_writer.start_dictionary()?;
 
-            self.dictionary.write_to_dictionary(dictionary_writer)?;
+            dictionary_writer.write_value("Length", self.content.size_hint() as i64)?;
+
+            self.dictionary
+                .write_to_dictionary(&mut dictionary_writer)?;
+
+            dictionary_writer.end_dictionary()?;
         }
         writer.write_all(b"\n")?;
         writer.write_all(b"stream\n")?;
@@ -124,10 +133,15 @@ where
         W: std::io::Write,
     {
         {
-            let dictionary_writer = DictionaryIoWriter { writer };
+            let mut dictionary_writer = DictionaryIoWriter { writer };
+            dictionary_writer.start_dictionary()?;
+
+            dictionary_writer.write_value("Length", self.content.size_hint() as i64)?;
 
             self.dictionary
-                .write_to_dictionary_borrowed(dictionary_writer)?;
+                .write_to_dictionary_borrowed(&mut dictionary_writer)?;
+
+            dictionary_writer.end_dictionary()?;
         }
         writer.write_all(b"\n")?;
         writer.write_all(b"stream\n")?;

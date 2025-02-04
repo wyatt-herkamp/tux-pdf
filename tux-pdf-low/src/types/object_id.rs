@@ -1,5 +1,55 @@
-use super::{copy_encode, PdfObjectType};
-
+use super::{copy_encode, Dictionary, Object, PdfObjectType};
+/// A reference to an object or the object itself
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ReferenceOrObject<Obj = Object> {
+    Reference(ObjectId),
+    Object(Obj),
+}
+impl<Obj> From<ReferenceOrObject<Obj>> for Object
+where
+    Obj: Into<Object>,
+{
+    fn from(reference_or_object: ReferenceOrObject<Obj>) -> Self {
+        match reference_or_object {
+            ReferenceOrObject::Reference(reference) => Object::Reference(reference),
+            ReferenceOrObject::Object(object) => object.into(),
+        }
+    }
+}
+impl<Obj> From<ObjectId> for ReferenceOrObject<Obj> {
+    fn from(reference: ObjectId) -> Self {
+        Self::Reference(reference)
+    }
+}
+impl From<Object> for ReferenceOrObject {
+    fn from(object: Object) -> Self {
+        match object {
+            Object::Reference(reference) => Self::Reference(reference),
+            object => Self::Object(object),
+        }
+    }
+}
+macro_rules! from_type {
+    (
+        $(
+            $type:ty
+        ),*
+    ) => {
+        $(
+            impl From<$type> for ReferenceOrObject<$type> {
+                fn from(object: $type) -> Self {
+                    Self::Object(object.into())
+                }
+            }
+            impl From<$type> for ReferenceOrObject {
+                fn from(object: $type) -> Self {
+                    Self::Object(object.into())
+                }
+            }
+        )*
+    };
+}
+from_type!(i64, f32, Dictionary);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct ObjectId {
     pub(crate) object_number: u32,

@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 thiserror = "2"
 tracing = { version = "0.1" }
-strum = { version = "0.26", features = ["derive"] }
+strum = { version = "0.27", features = ["derive"] }
 derive_more = { version = "2", features = ["from", "into"] }
 
 [package]
@@ -27,7 +27,7 @@ thiserror.workspace = true
 ttf-parser = "0.25"
 time = { version = "0.3", features = ["local-offset", "formatting"] }
 rand = { version = "0.9" }
-strum = { version = "0.26", features = ["derive"] }
+strum.workspace = true
 
 resvg = { version = "0.44", default-features = false, optional = true }
 chrono = { version = "0.4", features = ["serde"] }

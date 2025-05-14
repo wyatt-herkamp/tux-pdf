@@ -6,11 +6,14 @@ repository = "https://github.com/wyatt-herkamp/tux-pdf"
 license = "MIT OR Apache-2.0"
 edition = "2024"
 authors = ["Wyatt Jacob Herkamp <wherkamp@gmail.com>"]
+
 [workspace.dependencies]
 thiserror = "2"
 tracing = { version = "0.1" }
 strum = { version = "0.27", features = ["derive"] }
 derive_more = { version = "2", features = ["from", "into"] }
+time = { version = "0.3", features = ["local-offset", "formatting"] }
+chrono = { version = "0.4", features = ["serde"] }
 
 [package]
 name = "tux-pdf"
@@ -27,12 +30,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror.workspace = true
 ttf-parser = "0.25"
-time = { version = "0.3", features = ["local-offset", "formatting"] }
+
 rand = { version = "0.9" }
 strum.workspace = true
 
-resvg = { version = "0.44", default-features = false, optional = true }
-chrono = { version = "0.4", features = ["serde"] }
+resvg = { version = "0.45", default-features = false, optional = true }
 image = { version = "0.25", default-features = false }
 bitflags = "2"
 either = "1"
@@ -43,6 +45,10 @@ derive_more.workspace = true
 ahash = "0.8"
 
 taffy = { version = "0.7", optional = true }
+
+time.workspace = true
+chrono.workspace = true
+
 [dev-dependencies]
 anyhow = "1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

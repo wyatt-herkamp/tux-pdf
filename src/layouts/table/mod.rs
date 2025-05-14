@@ -1,15 +1,15 @@
 use std::{borrow::Cow, mem};
 
 use crate::{
+    TuxPdfError,
     document::PdfDocument,
     graphics::{
-        size::{RenderSize, Size},
         LayerType, Margin, TextBlock, TextStyle,
+        size::{RenderSize, Size},
     },
-    page::{page_sizes::A4, PdfPage},
+    page::{PdfPage, page_sizes::A4},
     units::Pt,
     utils::Merge,
-    TuxPdfError,
 };
 pub mod builder;
 mod style;
@@ -22,7 +22,7 @@ use crate::layouts::table::builder::{
 };
 pub use rows::*;
 use thiserror::Error;
-use tracing::{debug, info, Level};
+use tracing::{Level, debug, info};
 
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum TableError {
@@ -285,6 +285,7 @@ impl Table {
                             content: column.header.clone(),
                             position: location,
                             style: header_styles.clone().into_owned(),
+                            draw_as_lines: false,
                         })
                 {
                     page.add_to_layer(text)?;
@@ -306,6 +307,7 @@ impl Table {
                                 content: value,
                                 position: location,
                                 style: row_text_style.clone(),
+                                draw_as_lines: false,
                             };
                             page.add_to_layer(text)?;
                         }

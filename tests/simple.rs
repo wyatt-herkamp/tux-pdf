@@ -3,13 +3,13 @@ use std::{fs::File, io::BufReader};
 use image::codecs::png::PngDecoder;
 use test_utils::{destination_dir, does_end_with_ttf, fonts_dir, images_dir, init_logger};
 use tux_pdf::{
-    document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument, PdfXObjectImage},
+    document::{PdfDocument, PdfXObjectImage, owned_ttf_parser::OwnedPdfTtfFont},
     graphics::{
-        image::PdfImage, text::TextStyle, LayerType, PdfPosition, TextBlock, TextBlockContent,
-        TextItem, TextLine,
+        LayerType, PdfPosition, TextBlock, TextBlockContent, TextItem, TextLine, image::PdfImage,
+        text::TextStyle,
     },
     layouts::LayoutItemType,
-    page::{page_sizes::A4, PdfPage},
+    page::{PdfPage, page_sizes::A4},
     units::UnitType,
 };
 mod test_utils;
@@ -156,6 +156,7 @@ fn all_roboto() -> anyhow::Result<()> {
                 font_size: 24f32.pt(),
                 ..Default::default()
             },
+            draw_as_lines: false,
         };
         let text_size = test_text.calculate_size(&doc)?;
         page.add_to_layer(test_text)?;

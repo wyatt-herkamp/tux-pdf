@@ -14,8 +14,8 @@ indexmap = "2"
 tracing.workspace = true
 
 
-time = { version = "0.3", features = ["formatting", "parsing"] }
-chrono = { version = "0.4", optional = true }
+time.workspace = true
+chrono.workspace = true
 
 derive_more.workspace = true
 

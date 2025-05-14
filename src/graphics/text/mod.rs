@@ -5,19 +5,18 @@ pub use content::*;
 pub use style::*;
 
 use crate::{
+    TuxPdfError,
     document::PdfResources,
     graphics::{OperationKeys, PdfPosition},
     units::Pt,
-    TuxPdfError,
 };
 use state::TextBlockState;
 use tracing::debug;
 
 use super::{
     super::layouts::LayoutItemType,
-    operation_keys,
+    HasPosition, LayerType, OperationWriter, PdfObject, PdfObjectType, operation_keys,
     size::{RenderSize, Size},
-    HasPosition, LayerType, OperationWriter, PdfObject, PdfObjectType,
 };
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -33,6 +32,10 @@ pub struct TextBlock {
     /// If the text block contains multiple lines,
     /// This is just the starting position of the text block
     pub position: PdfPosition,
+    /// If true, the text will be drawn as lines
+    ///
+    /// This will result in text that is not selectable and not searchable
+    pub draw_as_lines: bool,
 }
 impl LayoutItemType for TextBlock {
     fn calculate_size(
@@ -151,22 +154,13 @@ impl TextBlock {
         content.write(&current_state, writer)?;
         Ok(())
     }
-}
-impl PdfObjectType for TextBlock {
-    fn write(
-        self,
+    fn write_text(
+        style: TextStyle,
+        mut lines: TextBlockContent,
+        position: PdfPosition,
         resources: &PdfResources,
         writer: &mut OperationWriter,
     ) -> Result<(), TuxPdfError> {
-        let Self {
-            content: mut lines,
-            style,
-            position,
-        } = self;
-        if lines.is_empty() {
-            return Ok(());
-        }
-
         writer.push_empty_op(TextOperations::BeginText);
         writer.add_operation(TextOperations::TextPosition, position.into());
 
@@ -186,6 +180,29 @@ impl PdfObjectType for TextBlock {
         }
 
         writer.push_empty_op(TextOperations::EndText);
+        Ok(())
+    }
+}
+impl PdfObjectType for TextBlock {
+    fn write(
+        self,
+        resources: &PdfResources,
+        writer: &mut OperationWriter,
+    ) -> Result<(), TuxPdfError> {
+        let Self {
+            content,
+            style,
+            position,
+            draw_as_lines,
+        } = self;
+        if content.is_empty() {
+            return Ok(());
+        }
+        if draw_as_lines {
+            todo!();
+        } else {
+            Self::write_text(style, content, position, resources, writer)?;
+        }
         Ok(())
     }
 }
@@ -218,9 +235,9 @@ operation_keys!(TextOperations => {
 #[cfg(test)]
 mod tests {
     use crate::{
-        document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
+        document::{PdfDocument, owned_ttf_parser::OwnedPdfTtfFont},
         graphics::{LayerType, PdfPosition},
-        page::{page_sizes::A4, PdfPage},
+        page::{PdfPage, page_sizes::A4},
         tests::{fonts_dir, init_logger},
         units::UnitType,
     };
@@ -249,6 +266,7 @@ mod tests {
                     x: 10f32.pt(),
                     y: -15f32.pt(),
                 },
+            draw_as_lines: false,
         };
         let mut page = PdfPage::new_from_page_size(A4);
         page.add_to_layer(text_block)?;

@@ -1,20 +1,21 @@
 use std::{mem, ops::Deref};
 
 use crate::{
+    TuxPdfError,
     document::{FontRef, FontType, PdfDocument},
     graphics::{
+        OperationKeys,
         size::{RenderSize, Size},
-        state_from_modifiers, OperationKeys,
+        state_from_modifiers,
     },
     units::Pt,
-    TuxPdfError,
 };
 
 use tracing::debug;
 use tux_pdf_low::types::Object;
 
 use super::{
-    write_modifiers, OperationWriter, TextBlockState, TextModifier, TextOperations, TextStyle,
+    OperationWriter, TextBlockState, TextModifier, TextOperations, TextStyle, write_modifiers,
 };
 
 /// A text item is a string with a list of modifiers
@@ -338,6 +339,11 @@ impl From<String> for TextLine {
             items: vec![TextItem::new(text)],
             modifiers: Vec::new(),
         }
+    }
+}
+impl From<TextLine> for TextBlockContent {
+    fn from(line: TextLine) -> Self {
+        Self(vec![line])
     }
 }
 impl From<&str> for TextLine {

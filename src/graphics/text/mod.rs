@@ -96,6 +96,10 @@ impl TextBlock {
         self.style = style;
         self
     }
+    pub fn push_line(mut self, line: TextLine) -> Self {
+        self.content = self.content.add_line(line);
+        self
+    }
     pub fn with_position(mut self, position: PdfPosition) -> Self {
         self.position = position;
         self

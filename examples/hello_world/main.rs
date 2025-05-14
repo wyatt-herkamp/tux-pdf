@@ -3,9 +3,9 @@ use std::{fs::File, io::Cursor, path::PathBuf};
 use clap::Parser;
 use image::codecs::png::PngDecoder;
 use tux_pdf::{
-    document::{static_ttf_parser::StaticTtfFace, PdfDocument, PdfXObjectImage},
-    graphics::{image::PdfImage, text::TextStyle, LayerType, PdfPosition, TextBlock},
-    page::{page_sizes::A4, PdfPage},
+    document::{PdfDocument, PdfXObjectImage, static_ttf_parser::StaticTtfFace},
+    graphics::{LayerType, PdfPosition, TextBlock, image::PdfImage, text::TextStyle},
+    page::{PdfPage, page_sizes::A4},
     units::UnitType,
 };
 static ROBOTO_FONT: &[u8] = include_bytes!("../../tests/fonts/Roboto/Roboto-Regular.ttf");
@@ -30,7 +30,12 @@ pub fn main() -> anyhow::Result<()> {
     let code_image_ref = doc.add_xobject(pdf_image);
 
     let mut page = PdfPage::new_from_page_size(A4);
+    let image = PdfImage::new(code_image_ref)
+        .with_position(PdfPosition::new(10.0.pt(), 100.0.pt()))
+        .with_scape(2f32, 2f32)
+        .with_dpi(300.0);
 
+    page.add_to_layer(image)?;
     let text = TextBlock::from("Hello World")
         .with_style(TextStyle {
             font_ref: roboto_font_ref,
@@ -39,13 +44,6 @@ pub fn main() -> anyhow::Result<()> {
         })
         .with_position(PdfPosition::new(10.0.pt(), 800.0.pt()));
     page.add_to_layer(text)?;
-
-    let image = PdfImage::new(code_image_ref)
-        .with_position(PdfPosition::new(10.0.pt(), 100.0.pt()))
-        .with_scape(2f32, 2f32)
-        .with_dpi(300.0);
-
-    page.add_to_layer(image)?;
 
     doc.add_page(page);
 

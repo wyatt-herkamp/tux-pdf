@@ -1,13 +1,13 @@
 use crate::{
+    TuxPdfError,
     document::{ResourceNotRegistered, XObjectId, XObjectRef},
     layouts::LayoutItemType,
     units::{Pt, Px},
-    TuxPdfError,
 };
 
 use super::{
-    primitives::ctm::CurTransMat, size::Size, HasPosition, LayerType, PdfObject, PdfObjectType,
-    PdfPosition,
+    HasPosition, LayerType, PdfObject, PdfObjectType, PdfPosition, primitives::ctm::CurTransMat,
+    size::Size,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -116,6 +116,7 @@ impl PdfObjectType for PdfImage {
         resources: &crate::document::PdfResources,
         writer: &mut crate::graphics::OperationWriter,
     ) -> Result<(), TuxPdfError> {
+        writer.save_graphics_state();
         let Some(x_object_ref) = resources.xobjects.get_xobject(&self.image) else {
             return Err(ResourceNotRegistered::from(self.image).into());
         };

@@ -90,7 +90,9 @@ pub(crate) trait ObjectMapType {
             // Just in case something goes wrong
             loop_count += 1;
             if loop_count > 100 {
-                panic!("Failed to generate a unique font id. This should never happen. Like what the heck?");
+                panic!(
+                    "Failed to generate a unique font id. This should never happen. Like what the heck?"
+                );
             }
         }
     }
@@ -110,7 +112,9 @@ pub(crate) trait ObjectMapType {
             // Just in case something goes wrong
             loop_count += 1;
             if loop_count > 100 {
-                panic!("Failed to generate a unique font id. This should never happen. Like what the heck?");
+                panic!(
+                    "Failed to generate a unique font id. This should never happen. Like what the heck?"
+                );
             }
         }
     }

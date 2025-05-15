@@ -32,7 +32,7 @@ pub fn main() -> anyhow::Result<()> {
     let mut page = PdfPage::new_from_page_size(A4);
     let image = PdfImage::new(code_image_ref)
         .with_position(PdfPosition::new(10.0.pt(), 100.0.pt()))
-        .with_scape(2f32, 2f32)
+        .with_scale(2f32, 2f32)
         .with_dpi(300.0);
 
     page.add_to_layer(image)?;

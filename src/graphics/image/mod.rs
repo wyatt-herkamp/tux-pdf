@@ -149,7 +149,7 @@ impl PdfImage {
         self.transform.position = position;
         self
     }
-    pub fn with_scape(mut self, scale_x: f32, scale_y: f32) -> Self {
+    pub fn with_scale(mut self, scale_x: f32, scale_y: f32) -> Self {
         self.transform.scale_x = Some(scale_x);
         self.transform.scale_y = Some(scale_y);
         self

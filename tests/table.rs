@@ -1,19 +1,25 @@
 mod test_utils;
 use chrono::Local;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use test_utils::{destination_dir, fonts_dir};
 use tux_pdf::{
-    document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
+    document::{PdfDocument, owned_ttf_parser::OwnedPdfTtfFont},
     graphics::{
+        TextStyle,
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
         styles::{Margin, Padding},
-        TextStyle,
     },
-    layouts::table::{
-        builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
-        Column, Row, RowStyles, Table, TablePageRules, TableStyles, TableValue,
+    layouts::{
+        table::{Row, RowStyles, Table, TablePageRules, TableStyles, TableValue},
+        table_grid::{
+            column::ColumnHeader,
+            style::{
+                GridStyleGroup,
+                size::{ColumnMaxWidth, ColumnMinWidth},
+            },
+        },
     },
-    page::{page_sizes::A4, PdfPage},
+    page::{PdfPage, page_sizes::A4},
     units::UnitType,
 };
 
@@ -21,13 +27,13 @@ use tux_pdf::{
 fn table_test() -> anyhow::Result<()> {
     test_utils::init_logger();
     let columns: Vec<_> = vec![
-        Column::from("Location"),
-        Column::from("Order Number"),
-        Column::from("Customer Name"),
-        Column::from("Order Type"),
-        Column::from("Order Size"),
-        Column::from("Work Order"),
-        Column::from("Notes").with_min_width(TableColumnMinWidth::AutoFill),
+        ColumnHeader::from("Location"),
+        ColumnHeader::from("Order Number"),
+        ColumnHeader::from("Customer Name"),
+        ColumnHeader::from("Order Type"),
+        ColumnHeader::from("Order Size"),
+        ColumnHeader::from("Work Order"),
+        ColumnHeader::from("Notes").with_min_width(ColumnMinWidth::AutoFill),
     ];
     let even_row_style = RowStyles {
         background_color: Some(GRAY_RGB),
@@ -124,13 +130,13 @@ fn table_test() -> anyhow::Result<()> {
 fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
     test_utils::init_logger();
     let columns: Vec<_> = vec![
-        Column::from("Timestamp").with_max_width(TableColumnMaxWidth::Fixed(100f32.pt())),
-        Column::from("Order Number"),
-        Column::from("Customer Name"),
-        Column::from("Order Type"),
-        Column::from("Order Size"),
-        Column::from("Work Order"),
-        Column::from("Notes").with_min_width(TableColumnMinWidth::AutoFill),
+        ColumnHeader::from("Timestamp").with_max_width(ColumnMaxWidth::Fixed(100f32.pt())),
+        ColumnHeader::from("Order Number"),
+        ColumnHeader::from("Customer Name"),
+        ColumnHeader::from("Order Type"),
+        ColumnHeader::from("Order Size"),
+        ColumnHeader::from("Work Order"),
+        ColumnHeader::from("Notes").with_min_width(ColumnMinWidth::AutoFill),
     ];
     let even_row_style = RowStyles {
         background_color: Some(GRAY_RGB),

@@ -1,15 +1,17 @@
 use crate::{
     graphics::{
-        color::{Color, BLACK_RGB, GRAY_RGB},
-        styles::Padding,
         PartialOrFullTextStyle, TextStyle,
+        color::{BLACK_RGB, Color, GRAY_RGB},
+        styles::Padding,
     },
-    layouts::table::{GridStyleGroup, TableColumnMaxWidth},
+    layouts::table_grid::style::{
+        GridStyleGroup,
+        size::{ColumnMaxWidth, ColumnMinWidth},
+    },
     units::{Pt, UnitType},
     utils::Merge,
 };
 
-use super::builder::TableColumnMinWidth;
 /// A cell is where the area where the row and column intersect
 ///
 /// Currently cell styles are not supported
@@ -22,11 +24,13 @@ pub struct CellStyle {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ColumnStyle {
     /// Will set the maximum width of the column
-    pub max_width: Option<TableColumnMaxWidth>,
+    pub max_width: Option<ColumnMaxWidth>,
     /// Will set the minimum width of the column
-    pub min_width: Option<TableColumnMinWidth>,
+    pub min_width: Option<ColumnMinWidth>,
     /// Cell Styling Options
     pub cell_styles: Option<CellStyle>,
+    pub text_style: Option<PartialOrFullTextStyle>,
+    pub span: Option<usize>,
 }
 /// Row Styles are the styles that are applied to the entire row
 #[derive(Debug, Clone, PartialEq, Default)]

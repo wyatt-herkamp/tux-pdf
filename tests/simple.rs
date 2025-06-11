@@ -105,17 +105,28 @@ pub fn basic_image() -> anyhow::Result<()> {
 
     let text = TextBlock::from("My code image")
         .with_style(TextStyle {
-            font_ref: roboto_font_ref,
+            font_ref: roboto_font_ref.clone(),
             ..Default::default()
         })
         .with_position(PdfPosition::new(10.0.pt(), 800.0.pt()));
     page.add_to_layer(text)?;
 
-    let image = PdfImage::new(code_image_ref)
+    let mut image = PdfImage::new(code_image_ref)
         .with_position(PdfPosition::new(10.0.pt(), 750.0.pt()))
         .with_scale(2f32, 2f32)
         .with_dpi(300.0);
 
+    let image_size = image.calculate_size(&doc)?;
+    let text = TextBlock::from(format!(
+        "Image Size: width{}pt,height: {}pt",
+        image_size.width, image_size.height
+    ))
+    .with_style(TextStyle {
+        font_ref: roboto_font_ref,
+        ..Default::default()
+    })
+    .with_position(PdfPosition::new(10.0.pt(), 700.0.pt()));
+    page.add_to_layer(text)?;
     page.add_to_layer(image)?;
 
     doc.add_page(page);

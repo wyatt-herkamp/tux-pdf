@@ -44,7 +44,7 @@ derive_more.workspace = true
 
 ahash = "0.8"
 
-taffy = { version = "0.7", optional = true }
+taffy = { version = "0.8", optional = true }
 
 time.workspace = true
 chrono.workspace = true

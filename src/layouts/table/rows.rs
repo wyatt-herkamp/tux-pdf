@@ -1,68 +1,14 @@
 use crate::{
+    TuxPdfError,
     document::PdfDocument,
     graphics::{
-        size::{RenderSize, Size},
         TextBlockContent, TextStyle,
+        size::{RenderSize, Size},
     },
-    layouts::table::builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
-    TuxPdfError,
+    layouts::table_grid::style::GridStyleGroup,
 };
 
-use super::{CellStyle, ColumnStyle, RowStyles};
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Column {
-    pub header: TextBlockContent,
-    pub styles: Option<ColumnStyle>,
-}
-impl Column {
-    pub fn with_cell_styles(mut self, styles: CellStyle) -> Self {
-        if let Some(column_styles) = self.styles.as_mut() {
-            column_styles.cell_styles = Some(styles);
-        } else {
-            self.styles = Some(ColumnStyle {
-                cell_styles: Some(styles),
-                ..Default::default()
-            });
-        }
-
-        self
-    }
-    pub fn with_max_width(mut self, max_width: TableColumnMaxWidth) -> Self {
-        if let Some(column_styles) = self.styles.as_mut() {
-            column_styles.max_width = Some(max_width);
-        } else {
-            self.styles = Some(ColumnStyle {
-                max_width: Some(max_width),
-                ..Default::default()
-            });
-        }
-        self
-    }
-    pub fn with_min_width(mut self, min_width: TableColumnMinWidth) -> Self {
-        if let Some(column_styles) = self.styles.as_mut() {
-            column_styles.min_width = Some(min_width);
-        } else {
-            self.styles = Some(ColumnStyle {
-                min_width: Some(min_width),
-                ..Default::default()
-            });
-        }
-        self
-    }
-}
-
-impl<T> From<T> for Column
-where
-    T: Into<TextBlockContent>,
-{
-    fn from(header: T) -> Self {
-        Self {
-            header: header.into(),
-            ..Default::default()
-        }
-    }
-}
+use super::{CellStyle, RowStyles};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TableValue {

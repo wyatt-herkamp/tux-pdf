@@ -2,14 +2,14 @@ use super::LayoutError;
 use taffy::{Dimension, NodeId, PrintTree, TaffyTree};
 mod style_builders;
 use crate::{
+    TuxPdfError,
     document::PdfDocument,
     graphics::{
-        color::BLACK_RGB, shapes::OutlineRect, size::Size, GraphicItems, GraphicStyles,
-        GraphicsGroup, HasPosition, LayerType, PdfPosition,
+        GraphicItems, GraphicStyles, GraphicsGroup, HasPosition, LayerType, PdfPosition,
+        color::BLACK_RGB, shapes::OutlineRect, size::Size,
     },
     page::PdfPage,
     units::{Pt, UnitType},
-    TuxPdfError,
 };
 pub use style_builders::*;
 
@@ -234,7 +234,7 @@ mod tests {
         document::owned_ttf_parser::OwnedPdfTtfFont,
         graphics::{HasPosition, TextBlock, TextStyle},
         layouts::LayoutItemType,
-        page::{page_sizes::A4, PdfPage},
+        page::{PdfPage, page_sizes::A4},
         tests::{create_test_document, fonts_dir, save_pdf_doc},
     };
 
@@ -325,10 +325,10 @@ mod tests {
                 size: A4.into(),
 
                 padding: taffy::Rect {
-                    top: taffy::LengthPercentage::Length(0f32),
-                    bottom: taffy::LengthPercentage::Length(10f32),
-                    left: taffy::LengthPercentage::Length(5f32),
-                    right: taffy::LengthPercentage::Length(5f32),
+                    top: taffy::LengthPercentage::length(0f32),
+                    bottom: taffy::LengthPercentage::length(10f32),
+                    left: taffy::LengthPercentage::length(5f32),
+                    right: taffy::LengthPercentage::length(5f32),
                 },
                 ..Default::default()
             },
@@ -344,10 +344,10 @@ mod tests {
             TaffyStyle {
                 align_content: Some(taffy::AlignContent::SpaceBetween),
                 padding: taffy::Rect {
-                    top: taffy::LengthPercentage::Length(0f32),
-                    bottom: taffy::LengthPercentage::Length(10f32),
-                    left: taffy::LengthPercentage::Length(0f32),
-                    right: taffy::LengthPercentage::Length(0f32),
+                    top: taffy::LengthPercentage::length(0f32),
+                    bottom: taffy::LengthPercentage::length(10f32),
+                    left: taffy::LengthPercentage::length(0f32),
+                    right: taffy::LengthPercentage::length(0f32),
                 },
                 ..Default::default()
             },
@@ -362,10 +362,10 @@ mod tests {
             TaffyStyle {
                 align_content: Some(taffy::AlignContent::SpaceBetween),
                 padding: taffy::Rect {
-                    top: taffy::LengthPercentage::Length(0f32),
-                    bottom: taffy::LengthPercentage::Length(10f32),
-                    left: taffy::LengthPercentage::Length(0f32),
-                    right: taffy::LengthPercentage::Length(0f32),
+                    top: taffy::LengthPercentage::length(0f32),
+                    bottom: taffy::LengthPercentage::length(10f32),
+                    left: taffy::LengthPercentage::length(0f32),
+                    right: taffy::LengthPercentage::length(0f32),
                 },
                 ..Default::default()
             },
@@ -380,9 +380,9 @@ mod tests {
             TaffyStyle {
                 padding: taffy::Rect {
                     top: length(0f32),
-                    bottom: taffy::LengthPercentage::Length(10f32),
-                    left: taffy::LengthPercentage::Length(0f32),
-                    right: taffy::LengthPercentage::Length(0f32),
+                    bottom: taffy::LengthPercentage::length(10f32),
+                    left: taffy::LengthPercentage::length(0f32),
+                    right: taffy::LengthPercentage::length(0f32),
                 },
                 ..Default::default()
             },

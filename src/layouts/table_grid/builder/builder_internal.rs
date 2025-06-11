@@ -1,9 +1,19 @@
 use tracing::{debug, error, warn};
 
-use super::{types::*, TableLayout};
+use super::TableLayout;
 use crate::{
-    graphics::{size::Size, PdfPosition},
-    layouts::table::{TableError, TablePageRules},
+    graphics::{PdfPosition, size::Size},
+    layouts::{
+        table::{TableError, TablePageRules},
+        table_grid::{
+            column::SizedColumn,
+            row::SizedGridRow,
+            style::{
+                GridBuilderColumn, GridBuilderRow, GridCell, GridStyleGroup, GridStyles,
+                size::ColumnMinWidth,
+            },
+        },
+    },
     units::{Pt, UnitType},
 };
 
@@ -25,7 +35,7 @@ impl TableLayoutBuilder {
     pub fn new(
         table_page_rules: &TablePageRules,
         styles: GridStyles,
-        columns: Vec<NewTableColumn>,
+        columns: Vec<SizedColumn>,
         header_row_styles: Option<GridStyleGroup>,
     ) -> Result<Self, TableError> {
         let TablePageRules {
@@ -81,7 +91,7 @@ impl TableLayoutBuilder {
         )
     }
     /// Calculates the initial columns widths and x positions
-    fn initialize_columns(&mut self, columns: Vec<NewTableColumn>) -> Result<bool, TableError> {
+    fn initialize_columns(&mut self, columns: Vec<SizedColumn>) -> Result<bool, TableError> {
         let column_sizes = columns
             .iter()
             .map(|column| column.initial_size)
@@ -89,13 +99,13 @@ impl TableLayoutBuilder {
         self.columns.reserve(columns.len());
         let mut has_auto_fill = false;
         for (index, column) in columns.into_iter().enumerate() {
-            let NewTableColumn {
+            let SizedColumn {
                 initial_size,
                 rules,
             } = column;
             if rules
                 .min_width
-                .map(|w| w == TableColumnMinWidth::AutoFill)
+                .map(|w| w == ColumnMinWidth::AutoFill)
                 .unwrap_or(false)
             {
                 if has_auto_fill {
@@ -283,22 +293,30 @@ impl TableLayoutBuilder {
         for (index, column) in self.columns.iter_mut().enumerate() {
             if let Some(width_override) = column.rules.min_width {
                 match width_override {
-                    TableColumnMinWidth::Fixed(pt) => {
+                    ColumnMinWidth::Fixed(pt) => {
                         if pt < column.width {
-                            error!(?pt, ?column, "Fixed width is less than current width. Skipping until we can handle text wrapping");
+                            error!(
+                                ?pt,
+                                ?column,
+                                "Fixed width is less than current width. Skipping until we can handle text wrapping"
+                            );
                             continue;
                         }
                         column.width = pt;
                     }
-                    TableColumnMinWidth::Percentage(percentage) => {
+                    ColumnMinWidth::Percentage(percentage) => {
                         let new_width = self.max_grid_size.width * percentage;
                         if new_width < column.width {
-                            error!(?new_width, ?column, "Percentage width is less than current width. Skipping until we can handle text wrapping");
+                            error!(
+                                ?new_width,
+                                ?column,
+                                "Percentage width is less than current width. Skipping until we can handle text wrapping"
+                            );
                             continue;
                         }
                         column.width = new_width;
                     }
-                    TableColumnMinWidth::AutoFill => {
+                    ColumnMinWidth::AutoFill => {
                         auto_fill_index = Some(index);
                     }
                 }
@@ -334,7 +352,7 @@ impl TableLayoutBuilder {
             .vertical_value()
             .unwrap_or_default();
         for column in self.columns {
-            let result = GridColumn {
+            let result = GridCell {
                 width: column.width,
                 width_no_padding: column.width - horizontal_padding,
                 x: column.x - horizontal_padding,
@@ -343,10 +361,10 @@ impl TableLayoutBuilder {
             };
             columns.push(result);
         }
-        let rows: Vec<TableRow> = self
+        let rows: Vec<SizedGridRow> = self
             .rows
             .into_iter()
-            .map(|row| TableRow {
+            .map(|row| SizedGridRow {
                 content_y: row.content_start_y + top_padding,
                 border_line_y: row.y - vertical_padding,
                 height: row.height,

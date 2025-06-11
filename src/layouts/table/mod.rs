@@ -3,26 +3,28 @@ use std::{borrow::Cow, mem};
 use crate::{
     TuxPdfError,
     document::PdfDocument,
-    graphics::{
-        LayerType, Margin, TextBlock, TextStyle,
-        size::{RenderSize, Size},
+    graphics::{LayerType, Margin, PartialOrFullTextStyle, TextBlock, TextStyle, size::Size},
+    layouts::table_grid::{
+        builder::TableLayoutBuilder,
+        style::{GridStyleGroup, GridStyles},
     },
     page::{PdfPage, page_sizes::A4},
     units::Pt,
     utils::Merge,
 };
-pub mod builder;
 mod style;
-use builder::{GridStyleGroup, TableColumnMaxWidth, TableLayout};
 pub use style::*;
 mod rows;
 
-use crate::layouts::table::builder::{
-    GridColumnRules, GridStyles, NewTableColumn, TableLayoutBuilder,
-};
 pub use rows::*;
 use thiserror::Error;
 use tracing::{Level, debug, info};
+
+use super::table_grid::{
+    builder::TableLayout,
+    column::{ColumnHeader, HeaderSize},
+    style::size::ColumnMaxWidth,
+};
 
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum TableError {
@@ -72,7 +74,7 @@ pub fn no_new_page_allowed(_: &mut PdfDocument) -> Result<(TablePageRules, PdfPa
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Table {
-    pub columns: Vec<Column>,
+    pub columns: Vec<ColumnHeader>,
     pub rows: Vec<Row>,
     pub styles: TableStyles,
     pub new_page: NewPageFn,
@@ -87,8 +89,22 @@ impl Default for Table {
         }
     }
 }
+impl HeaderSize for Table {
+    fn column_iter(&self) -> impl Iterator<Item = Cow<'_, ColumnHeader>> {
+        self.columns.iter().map(|column| Cow::Borrowed(column))
+    }
+    fn header_row_text_styles(&self) -> Option<&PartialOrFullTextStyle> {
+        self.styles
+            .header_styles
+            .as_ref()
+            .and_then(|s| s.text_style.as_ref())
+    }
+    fn root_text_styles(&self) -> &TextStyle {
+        &self.styles.text_styles
+    }
+}
 impl Table {
-    pub fn add_column(&mut self, column: Column) {
+    pub fn add_column(&mut self, column: ColumnHeader) {
         self.columns.push(column);
     }
     pub fn add_row(&mut self, row: Row) {
@@ -115,38 +131,6 @@ impl Table {
         Ok(())
     }
 
-    fn header_text_styles(&self) -> Cow<'_, TextStyle> {
-        if let Some(header_text_style) = self
-            .styles
-            .header_styles
-            .as_ref()
-            .and_then(|style| style.text_style.as_ref())
-        {
-            header_text_style.merge_with_full(&self.styles.text_styles)
-        } else {
-            Cow::Borrowed(&self.styles.text_styles)
-        }
-    }
-    fn size_of_header_columns(
-        &self,
-        document: &mut PdfDocument,
-    ) -> Result<Vec<NewTableColumn>, TuxPdfError> {
-        let style = self.header_text_styles();
-        self.columns
-            .iter()
-            .map(|column| {
-                let size = column.header.render_size(document, style.as_ref())?;
-                let rules = GridColumnRules {
-                    min_width: column.styles.as_ref().and_then(|s| s.min_width),
-                    max_width: column.styles.as_ref().and_then(|s| s.max_width),
-                };
-                Ok(NewTableColumn {
-                    initial_size: size,
-                    rules,
-                })
-            })
-            .collect()
-    }
     fn prepare_content(
         &mut self,
         document: &mut PdfDocument,
@@ -157,10 +141,8 @@ impl Table {
         for (column_index, column) in self.columns.iter_mut().enumerate() {
             if let Some(max_width) = column.styles.as_ref().and_then(|s| s.max_width) {
                 let max_width = match max_width {
-                    TableColumnMaxWidth::Fixed(pt) => pt,
-                    TableColumnMaxWidth::Percentage(percentage) => {
-                        available_size.width * percentage
-                    }
+                    ColumnMaxWidth::Fixed(pt) => pt,
+                    ColumnMaxWidth::Percentage(percentage) => available_size.width * percentage,
                 };
                 column
                     .header
@@ -285,7 +267,7 @@ impl Table {
                             content: column.header.clone(),
                             position: location,
                             style: header_styles.clone().into_owned(),
-                            draw_as_lines: false,
+                            ..Default::default()
                         })
                 {
                     page.add_to_layer(text)?;

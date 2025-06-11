@@ -16,8 +16,11 @@ mod layout_type;
 pub use layout_type::*;
 
 pub mod table;
+pub mod table_grid;
 #[cfg(feature = "taffy")]
 pub mod taffy_layout;
+
+pub mod calendar;
 /// Re-export the taffy crate
 ///
 /// If you are going to use the taffy_layout module. I highly recommend you import it's prelude
@@ -38,9 +41,9 @@ pub mod taffy_crate {
                 Position as TaffyPosition, Style as TaffyStyle,
             },
             style_helpers::{
-                auto, fit_content, length, max_content, min_content, percent, zero, FromFlex,
                 FromLength, FromPercent, TaffyAuto, TaffyFitContent, TaffyMaxContent,
-                TaffyMinContent, TaffyZero,
+                TaffyMinContent, TaffyZero, auto, fit_content, length, max_content, min_content,
+                percent, zero,
             },
             tree::{
                 Layout as TaffyLayout, LayoutPartialTree, NodeId, PrintTree, RoundTree,
@@ -55,7 +58,7 @@ pub mod taffy_crate {
             MinTrackSizingFunction, NonRepeatedTrackSizingFunction, TrackSizingFunction,
         };
         pub use taffy::style_helpers::{
-            evenly_sized_tracks, flex, fr, line, minmax, repeat, span, TaffyGridLine, TaffyGridSpan,
+            TaffyGridLine, TaffyGridSpan, evenly_sized_tracks, flex, fr, line, minmax, repeat, span,
         };
 
         pub use taffy::TaffyTree;

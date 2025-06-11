@@ -2,18 +2,19 @@ mod builder_internal;
 
 pub use builder_internal::*;
 use tracing::{debug, error};
-pub use types::*;
 
 use crate::{
     graphics::{
+        GraphicItems, GraphicStyles, GraphicsGroup, PdfPosition,
         primitives::StraightLine,
         shapes::{OutlineRect, PaintedRect, RectangleStyleType},
         size::Size,
-        GraphicItems, GraphicStyles, GraphicsGroup, PdfPosition,
     },
+    layouts::table_grid::style::{GridCell, GridStyles},
     utils::Merge,
 };
-mod types;
+
+use super::row::SizedGridRow;
 pub struct TableRowPlacementIter<'a> {
     table_rect: &'a TableLayout,
     current_row: usize,
@@ -66,8 +67,8 @@ pub struct TableLayout {
     pub(crate) final_size: Size,
     pub(crate) start: PdfPosition,
     pub(crate) styles: GridStyles,
-    pub(crate) rows: Vec<TableRow>,
-    pub(crate) columns: Vec<GridColumn>,
+    pub(crate) rows: Vec<SizedGridRow>,
+    pub(crate) columns: Vec<GridCell>,
 }
 impl TableLayout {
     /// Gets the column location for a row and column

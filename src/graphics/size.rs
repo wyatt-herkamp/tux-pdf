@@ -47,8 +47,8 @@ mod taffy_size {
     impl From<Size> for TaffySize<Dimension> {
         fn from(value: Size) -> Self {
             Self {
-                width: Dimension::Length(value.width.into()),
-                height: Dimension::Length(value.height.into()),
+                width: Dimension::length(value.width.into()),
+                height: Dimension::length(value.height.into()),
             }
         }
     }

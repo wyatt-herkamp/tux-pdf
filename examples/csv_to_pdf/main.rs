@@ -2,20 +2,24 @@ use std::{fs::File, path::PathBuf};
 
 use clap::Parser;
 use tux_pdf::{
-    document::{static_ttf_parser::StaticTtfFace, PdfDocument},
+    TuxPdfError,
+    document::{PdfDocument, static_ttf_parser::StaticTtfFace},
     graphics::{
+        TextStyle,
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
         styles::Margin,
-        TextStyle,
     },
-    layouts::table::builder::{GridStyleGroup, TableColumnMaxWidth},
-    layouts::table::{
-        Column, ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles,
-        TableValueWithStyle,
+    layouts::{
+        table::{
+            ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles, TableValueWithStyle,
+        },
+        table_grid::{
+            column::ColumnHeader,
+            style::{GridStyleGroup, size::ColumnMaxWidth},
+        },
     },
-    page::{page_sizes::A4, PdfPage},
+    page::{PdfPage, page_sizes::A4},
     units::{Pt, UnitType},
-    TuxPdfError,
 };
 static ROBOTO_FONT: &[u8] = include_bytes!("../../tests/fonts/Roboto/Roboto-Regular.ttf");
 #[derive(Debug, Clone, Parser)]
@@ -93,7 +97,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<Column>, Vec<Row>)> {
+fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<ColumnHeader>, Vec<Row>)> {
     let csv_file = File::open(file)?;
 
     let mut cvs_reader = csv::Reader::from_reader(csv_file);
@@ -107,10 +111,10 @@ fn read_csv(file: &PathBuf) -> anyhow::Result<(Vec<Column>, Vec<Row>)> {
     println!("Width per column: {}", width_per_column);
     let header_columns = headers
         .into_iter()
-        .map(|value| Column {
+        .map(|value| ColumnHeader {
             header: value.into(),
             styles: Some(ColumnStyle {
-                max_width: Some(TableColumnMaxWidth::Fixed(width_per_column)),
+                max_width: Some(ColumnMaxWidth::Fixed(width_per_column)),
                 ..Default::default()
             }),
         })

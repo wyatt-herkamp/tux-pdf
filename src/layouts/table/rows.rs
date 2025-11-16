@@ -65,8 +65,10 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum TableValue {
     Text(TextBlockContent),
+    #[default]
     BlankSpace,
 }
 impl<T> From<T> for TableValue
@@ -79,11 +81,6 @@ where
 }
 impl From<()> for TableValue {
     fn from(_: ()) -> Self {
-        Self::BlankSpace
-    }
-}
-impl Default for TableValue {
-    fn default() -> Self {
         Self::BlankSpace
     }
 }

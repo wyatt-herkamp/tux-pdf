@@ -86,7 +86,7 @@ impl TableLayout {
         Some(PdfPosition { x, y })
     }
 
-    pub fn row_iter(&self) -> TableRowPlacementIter {
+    pub fn row_iter(&self) -> TableRowPlacementIter<'_> {
         TableRowPlacementIter {
             table_rect: self,
             current_row: 0,

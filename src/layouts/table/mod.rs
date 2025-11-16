@@ -70,7 +70,7 @@ pub fn no_new_page_allowed(_: &mut PdfDocument) -> Result<(TablePageRules, PdfPa
     Err(TableError::NoNewPageAllowed.into())
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Table {
     pub columns: Vec<Column>,
     pub rows: Vec<Row>,

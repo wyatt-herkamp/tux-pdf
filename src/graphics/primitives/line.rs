@@ -40,7 +40,7 @@ where
         let start = points.remove(0);
         Self {
             start,
-            points: points.into_iter().map(Into::into).collect(),
+            points: points.into_iter().collect(),
             is_closed,
         }
     }

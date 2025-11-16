@@ -180,7 +180,7 @@ impl PdfFontMap {
         }
         dict
     }
-    pub fn internal_font_type(&self, font_ref: &FontRef) -> Option<InternalFontTypes> {
+    pub fn internal_font_type(&self, font_ref: &FontRef) -> Option<InternalFontTypes<'_>> {
         match font_ref {
             FontRef::External(id) => self.map.get(id).map(InternalFontTypes::External),
             FontRef::Builtin(builtin) => {
@@ -259,14 +259,13 @@ impl FontType for ParsedFont {
         let mut width = Pt::default();
         let mut height = f32::default();
         for c in text.chars() {
-            if let Some(glyph_id) = self.get_glyph_id(c) {
-                if let Some(metrics) = self.font.glyph_metrics(glyph_id) {
+            if let Some(glyph_id) = self.get_glyph_id(c)
+                && let Some(metrics) = self.font.glyph_metrics(glyph_id) {
                     let (glyph_width, glyph_height) =
                         metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
                     width += glyph_width;
                     height = height.max(glyph_height.0);
                 }
-            }
         }
         debug!(
             "Size of text {text:?} Width: {:#?}, Height: {:#?}",
@@ -278,8 +277,8 @@ impl FontType for ParsedFont {
         }
     }
     fn size_of_char<P: FontRenderSizeParams>(&self, c: char, params: &P) -> Option<Size> {
-        if let Some(glyph_id) = self.get_glyph_id(c) {
-            if let Some(metrics) = self.font.glyph_metrics(glyph_id) {
+        if let Some(glyph_id) = self.get_glyph_id(c)
+            && let Some(metrics) = self.font.glyph_metrics(glyph_id) {
                 let (glyph_width, glyph_height) =
                     metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
                 return Some(Size {
@@ -287,7 +286,6 @@ impl FontType for ParsedFont {
                     height: glyph_height,
                 });
             }
-        }
         None
     }
 

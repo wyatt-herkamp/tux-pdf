@@ -66,11 +66,10 @@ where
             subtable.codepoints(|c| {
                 use std::convert::TryFrom as _;
 
-                if let Ok(ch) = char::try_from(c) {
-                    if let Some(idx) = subtable.glyph_index(c).filter(|idx| idx.0 > 0) {
+                if let Ok(ch) = char::try_from(c)
+                    && let Some(idx) = subtable.glyph_index(c).filter(|idx| idx.0 > 0) {
                         map.entry(idx.0).or_insert(ch);
                     }
-                }
             })
         }
         map

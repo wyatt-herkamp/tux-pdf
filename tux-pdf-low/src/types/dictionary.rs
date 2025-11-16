@@ -62,7 +62,7 @@ impl Dictionary {
             }),
         }
     }
-    pub fn writer(&mut self) -> DictionaryWriterToDictionary {
+    pub fn writer(&mut self) -> DictionaryWriterToDictionary<'_> {
         DictionaryWriterToDictionary { dict: self }
     }
 }

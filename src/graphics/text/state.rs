@@ -101,8 +101,8 @@ impl<'resources> UpdatingTextBlockState<'_, 'resources> {
         } else {
             self.original.font_type
         };
-        if let Some(writer) = writer {
-            if self.font.is_some() || self.font_size.is_some() {
+        if let Some(writer) = writer
+            && (self.font.is_some() || self.font_size.is_some()) {
                 let font = self.font.as_ref().unwrap_or(&self.original.font);
                 let font_size = self.font_size.unwrap_or(self.original.font_size);
                 writer.add_operation(
@@ -110,7 +110,6 @@ impl<'resources> UpdatingTextBlockState<'_, 'resources> {
                     vec![font.clone().into(), font_size.into()],
                 );
             }
-        }
         let result = TextBlockState {
             resources: self.original.resources,
             font: self.font.unwrap_or_else(|| self.original.font.clone()),

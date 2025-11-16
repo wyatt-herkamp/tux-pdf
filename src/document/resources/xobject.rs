@@ -89,7 +89,7 @@ pub enum XObject {
     Form(Box<FormXObject>),
 }
 impl XObject {
-    pub fn as_ref(&self) -> XObjectRef {
+    pub fn as_ref(&self) -> XObjectRef<'_> {
         match self {
             XObject::Image(image) => XObjectRef::Image(image),
             XObject::Form(form) => XObjectRef::Form(form),

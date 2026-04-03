@@ -1,4 +1,4 @@
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{RngExt, rngs::ThreadRng};
 use tux_pdf::{
     document::PdfDocument,
     graphics::color::{Color, Rgb},
@@ -7,7 +7,7 @@ include!("test_utils_external.rs");
 
 #[allow(dead_code)]
 pub fn random_color() -> Color {
-    let mut random = StdRng::from_os_rng();
+    let mut random = ThreadRng::default();
 
     Color::Rgb(Rgb {
         r: random.random_range(0.0..1.0),

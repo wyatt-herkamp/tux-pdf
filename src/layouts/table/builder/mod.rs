@@ -6,10 +6,10 @@ pub use types::*;
 
 use crate::{
     graphics::{
+        GraphicItems, GraphicStyles, GraphicsGroup, PdfPosition,
         primitives::StraightLine,
         shapes::{OutlineRect, PaintedRect, RectangleStyleType},
         size::Size,
-        GraphicItems, GraphicStyles, GraphicsGroup, PdfPosition,
     },
     utils::Merge,
 };

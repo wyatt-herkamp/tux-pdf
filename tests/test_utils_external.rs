@@ -3,7 +3,7 @@
 #[allow(dead_code)]
 pub fn init_logger() {
     use tracing::{error, info, level_filters::LevelFilter};
-    use tracing_subscriber::{filter, layer::SubscriberExt, util::SubscriberInitExt, Layer};
+    use tracing_subscriber::{Layer, filter, layer::SubscriberExt, util::SubscriberInitExt};
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
         let stdout_log = tracing_subscriber::fmt::layer().pretty().without_time();

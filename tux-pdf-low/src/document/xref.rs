@@ -1,12 +1,12 @@
 use std::{collections::BTreeMap, io::Write};
 
 use crate::{
+    LowTuxPdfError,
     types::{
-        trailer::{PdfTrailer, XRefPdfTrailer},
         Name, ObjectId, Stream,
+        trailer::{PdfTrailer, XRefPdfTrailer},
     },
     utils::write::write_object_type,
-    LowTuxPdfError,
 };
 
 #[derive(Debug, Clone)]

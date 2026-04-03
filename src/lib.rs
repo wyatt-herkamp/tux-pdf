@@ -1,6 +1,6 @@
 use document::{FontRef, ResourceNotRegistered};
 pub mod layouts;
-use layouts::{table::TableError, LayoutError};
+use layouts::{LayoutError, table::TableError};
 use thiserror::Error;
 
 pub mod document;

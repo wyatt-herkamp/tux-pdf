@@ -117,8 +117,10 @@ impl TextBlock {
         current_state: TextBlockState,
         line_spacing: Pt,
         writer: &mut OperationWriter,
+        cursor: &mut TextCursor,
     ) -> Result<(), TuxPdfError> {
         writer.push_empty_op(OperationKeys::SaveGraphicsState);
+        let start_x = cursor.x;
         // We reverse the array because the starting position is at the bottom left so we need to start from the bottom
         let mut line_iterator = lines.into_iter().rev().peekable();
         while let Some(line) = line_iterator.next() {
@@ -128,7 +130,7 @@ impl TextBlock {
             } else {
                 false
             };
-            let line_size = line.write(&current_state, writer)?;
+            let line_size = line.write(&current_state, writer, cursor)?;
             if restore {
                 writer.push_empty_op(OperationKeys::RestoreGraphicsState);
             }
@@ -144,6 +146,9 @@ impl TextBlock {
                     }
                     .into(),
                 );
+                // Move cursor to next line start
+                cursor.x = start_x;
+                cursor.y += line_height;
             }
         }
 
@@ -154,8 +159,9 @@ impl TextBlock {
         current_state: TextBlockState,
         content: TextLine,
         writer: &mut OperationWriter,
+        cursor: &mut TextCursor,
     ) -> Result<(), TuxPdfError> {
-        content.write(&current_state, writer)?;
+        content.write(&current_state, writer, cursor)?;
         Ok(())
     }
     fn write_text(
@@ -176,11 +182,18 @@ impl TextBlock {
         let line_spacing = style.line_spacing.unwrap_or_default();
         style.write(resources, writer)?;
 
+        let mut cursor = TextCursor {
+            x: position.x,
+            y: position.y,
+            origin_x: position.x,
+            origin_y: position.y,
+        };
+
         if lines.len() > 1 {
-            Self::writer_many(lines.0, writer_state, line_spacing, writer)?;
+            Self::writer_many(lines.0, writer_state, line_spacing, writer, &mut cursor)?;
         } else {
             let line = lines.0.remove(0);
-            Self::write_one(writer_state, line, writer)?;
+            Self::write_one(writer_state, line, writer, &mut cursor)?;
         }
 
         writer.push_empty_op(TextOperations::EndText);
@@ -223,6 +236,8 @@ operation_keys!(TextOperations => {
         TextFont => "Tf",
         /// Text Position
         TextPosition => "Td",
+        /// Set Text Matrix
+        SetTextMatrix => "Tm",
         /// Character Space
         CharacterSpace => "Tc",
         /// Word Space

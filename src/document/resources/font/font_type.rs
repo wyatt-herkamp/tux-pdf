@@ -29,6 +29,19 @@ pub trait ExternalLoadedFont {
     fn font_bytes(&self) -> &[u8];
 
     fn font_name(&self) -> Option<String>;
+
+    /// Returns true if the font contains color glyph data (SVG, COLR, CBDT, or sbix tables).
+    fn has_color_glyphs(&self) -> bool;
+
+    /// Returns the SVG data for a glyph, if available.
+    fn glyph_svg_data(&self, glyph_id: u16) -> Option<&[u8]>;
+
+    /// Returns raster image data for a glyph at the given pixels-per-em, if available.
+    fn glyph_raster_data(
+        &self,
+        glyph_id: u16,
+        pixels_per_em: u16,
+    ) -> Option<ttf_parser::RasterGlyphImage<'_>>;
 }
 pub(crate) trait TtfParserFont {
     fn as_face_ref(&self) -> &ttf_parser::Face<'_>;
@@ -67,9 +80,10 @@ where
                 use std::convert::TryFrom as _;
 
                 if let Ok(ch) = char::try_from(c)
-                    && let Some(idx) = subtable.glyph_index(c).filter(|idx| idx.0 > 0) {
-                        map.entry(idx.0).or_insert(ch);
-                    }
+                    && let Some(idx) = subtable.glyph_index(c).filter(|idx| idx.0 > 0)
+                {
+                    map.entry(idx.0).or_insert(ch);
+                }
             })
         }
         map
@@ -119,6 +133,29 @@ where
             (Some(family_name), None) => Some(family_name),
             _ => None,
         }
+    }
+
+    fn has_color_glyphs(&self) -> bool {
+        let face = self.as_face_ref();
+        face.tables().svg.is_some()
+            || face.tables().colr.is_some()
+            || face.tables().cbdt.is_some()
+            || face.tables().sbix.is_some()
+    }
+
+    fn glyph_svg_data(&self, glyph_id: u16) -> Option<&[u8]> {
+        self.as_face_ref()
+            .glyph_svg_image(ttf_parser::GlyphId(glyph_id))
+            .map(|img| img.data)
+    }
+
+    fn glyph_raster_data(
+        &self,
+        glyph_id: u16,
+        pixels_per_em: u16,
+    ) -> Option<ttf_parser::RasterGlyphImage<'_>> {
+        self.as_face_ref()
+            .glyph_raster_image(ttf_parser::GlyphId(glyph_id), pixels_per_em)
     }
 }
 #[derive(Debug, Clone, PartialEq, From)]
@@ -191,6 +228,31 @@ impl ExternalLoadedFont for ExternalFont {
         match self {
             ExternalFont::OwnedTtfParser(face) => face.font_name(),
             ExternalFont::StaticTtfParser(face) => face.font_name(),
+        }
+    }
+
+    fn has_color_glyphs(&self) -> bool {
+        match self {
+            ExternalFont::OwnedTtfParser(face) => face.has_color_glyphs(),
+            ExternalFont::StaticTtfParser(face) => face.has_color_glyphs(),
+        }
+    }
+
+    fn glyph_svg_data(&self, glyph_id: u16) -> Option<&[u8]> {
+        match self {
+            ExternalFont::OwnedTtfParser(face) => face.glyph_svg_data(glyph_id),
+            ExternalFont::StaticTtfParser(face) => face.glyph_svg_data(glyph_id),
+        }
+    }
+
+    fn glyph_raster_data(
+        &self,
+        glyph_id: u16,
+        pixels_per_em: u16,
+    ) -> Option<ttf_parser::RasterGlyphImage<'_>> {
+        match self {
+            ExternalFont::OwnedTtfParser(face) => face.glyph_raster_data(glyph_id, pixels_per_em),
+            ExternalFont::StaticTtfParser(face) => face.glyph_raster_data(glyph_id, pixels_per_em),
         }
     }
 }

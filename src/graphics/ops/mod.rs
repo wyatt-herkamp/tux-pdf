@@ -1,7 +1,7 @@
 mod keys;
 use crate::{
-    document::{LayerId, PdfResources},
     TuxPdfError,
+    document::{LayerId, PdfResources},
 };
 pub use keys::*;
 use tux_pdf_low::{
@@ -9,7 +9,7 @@ use tux_pdf_low::{
     types::{Dictionary, Object, PdfType, Stream},
 };
 
-use super::{group::GraphicItems, image::PdfImage, GraphicStyles, TextBlock, TextOperations};
+use super::{GraphicStyles, TextBlock, TextOperations, group::GraphicItems, image::PdfImage};
 /// Operations that can occur in a PDF page
 #[derive(Debug, Clone, PartialEq)]
 pub enum PdfObject {

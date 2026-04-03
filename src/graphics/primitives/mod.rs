@@ -1,4 +1,4 @@
-use super::{operation_keys, PdfPosition};
+use super::{PdfPosition, operation_keys};
 pub mod ctm;
 mod line;
 pub use line::*;

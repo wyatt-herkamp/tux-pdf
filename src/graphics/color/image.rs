@@ -2,7 +2,7 @@ use image::ColorType::{self, *};
 use strum::Display;
 use tux_pdf_low::types::Object;
 
-use crate::{utils::strum_into_name, TuxPdfError};
+use crate::{TuxPdfError, utils::strum_into_name};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum ColorSpace {

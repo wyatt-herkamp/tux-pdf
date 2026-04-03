@@ -1,11 +1,11 @@
 use derive_more::derive::From;
 
-use crate::{document::PdfResources, TuxPdfError};
+use crate::{TuxPdfError, document::PdfResources};
 
 use super::{
+    GraphicStyles, OperationKeys, OperationWriter, PdfObject, PdfObjectType,
     primitives::{Line, StraightLine},
     shapes::{OutlineRect, PaintedRect},
-    GraphicStyles, OperationKeys, OperationWriter, PdfObject, PdfObjectType,
 };
 
 /// By default every graphic item you add to be rendered will end with a call to restore the graphics state.

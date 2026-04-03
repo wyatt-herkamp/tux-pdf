@@ -2,7 +2,7 @@ use derive_more::derive::From;
 
 use crate::{
     graphics::{
-        color::Color, shapes::RectangleStyleType, size::Size, styles::Padding, GraphicStyles,
+        GraphicStyles, color::Color, shapes::RectangleStyleType, size::Size, styles::Padding,
     },
     units::Pt,
     utils::{IsEmpty, Merge},

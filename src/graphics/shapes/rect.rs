@@ -4,12 +4,12 @@ use tux_pdf_low::types::Object;
 
 use crate::{
     graphics::{
+        OperationWriter, PdfObjectType, PdfPosition,
         primitives::{
             PaintMode, PathConstructionOperators, PathPaintOperationKeys, Polygon, StraightLine,
             WindingOrder,
         },
         size::Size,
-        OperationWriter, PdfObjectType, PdfPosition,
     },
     units::{Pt, UnitType},
     utils::copy_into,

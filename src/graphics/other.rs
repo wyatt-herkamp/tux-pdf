@@ -1,6 +1,6 @@
-use crate::{layouts::LayoutItemType, TuxPdfError};
+use crate::{TuxPdfError, layouts::LayoutItemType};
 
-use super::{size::Size, HasPosition, PdfPosition};
+use super::{HasPosition, PdfPosition, size::Size};
 
 /// Blank space is good if you wanna leave a "text space" or writing space for later
 #[derive(Debug, Clone, PartialEq, Default)]

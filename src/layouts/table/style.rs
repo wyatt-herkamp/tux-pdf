@@ -1,8 +1,8 @@
 use crate::{
     graphics::{
-        color::{Color, BLACK_RGB, GRAY_RGB},
-        styles::Padding,
         PartialOrFullTextStyle, TextStyle,
+        color::{BLACK_RGB, Color, GRAY_RGB},
+        styles::Padding,
     },
     layouts::table::{GridStyleGroup, TableColumnMaxWidth},
     units::{Pt, UnitType},

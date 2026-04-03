@@ -6,9 +6,9 @@ use xref::{Xref, XrefEntry, XrefType};
 
 use crate::{
     types::{
-        trailer::{PdfTrailer, StandardTrailer},
         Dictionary, DictionaryIoWriter, DictionaryType, Object, ObjectId, PdfType, PdfVersion,
         WritableDictionary,
+        trailer::{PdfTrailer, StandardTrailer},
     },
     utils::write::write_object,
 };

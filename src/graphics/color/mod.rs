@@ -8,7 +8,7 @@ use tux_pdf_low::types::Object;
 
 use crate::document::IccProfileId;
 
-use super::{operation_keys, PdfObjectType};
+use super::{PdfObjectType, operation_keys};
 macro_rules! default_rgb_colors {
     (
         $(

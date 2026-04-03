@@ -1,8 +1,8 @@
 use test_utils::{create_test_document, fonts_dir, save_pdf_doc};
 use tux_pdf::{
     document::owned_ttf_parser::OwnedPdfTtfFont,
-    graphics::{text::TextStyle, LayerType, TextBlock},
-    page::{page_sizes::A4, PdfPage},
+    graphics::{LayerType, TextBlock, text::TextStyle},
+    page::{PdfPage, page_sizes::A4},
     units::UnitType,
 };
 mod test_utils;

@@ -1,10 +1,10 @@
 use crate::{
+    TuxPdfError,
     document::PdfDocument,
     graphics::{
-        image::PdfImage, size::Size, BlankSpace, HasPosition, LayerType, PdfPosition, TextBlock,
+        BlankSpace, HasPosition, LayerType, PdfPosition, TextBlock, image::PdfImage, size::Size,
     },
     units::Pt,
-    TuxPdfError,
 };
 
 use super::LayoutError;

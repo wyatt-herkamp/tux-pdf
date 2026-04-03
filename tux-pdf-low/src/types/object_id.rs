@@ -1,4 +1,4 @@
-use super::{copy_encode, Dictionary, Object, PdfObjectType};
+use super::{Dictionary, Object, PdfObjectType, copy_encode};
 /// A reference to an object or the object itself
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ReferenceOrObject<Obj = Object> {

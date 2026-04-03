@@ -4,6 +4,7 @@ use std::{
     fmt::Debug,
 };
 mod builtin;
+pub(crate) mod emoji_rasterizer;
 mod font_type;
 pub use builtin::*;
 pub use font_type::*;
@@ -16,19 +17,60 @@ use tux_pdf_low::{
 };
 
 use crate::{
+    TuxPdfError,
     document::{
+        DocumentWriter,
         types::{
             CIDSystemInfo, CidFontType2, FontDescriptorBuilder, FontEncoding, FontFlags,
             FontObject, PdfDirectoryType, Type0Font,
         },
-        DocumentWriter,
     },
     graphics::size::Size,
     units::{Pt, UnitType},
-    TuxPdfError,
 };
 
-use super::{IdType, ObjectMapType};
+use super::{IdType, ObjectMapType, XObjectId};
+
+/// Controls how color emoji fonts are rendered in the PDF.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum EmojiRenderMode {
+    /// Embed the font as-is. Rendering depends on PDF viewer support for color font tables.
+    #[default]
+    EmbedFont,
+    /// Rasterize each emoji glyph to an image XObject.
+    /// `pixels_per_em` controls rasterization quality (default: 128).
+    RasterizeToImage { pixels_per_em: u16 },
+}
+impl EmojiRenderMode {
+    /// Creates a `RasterizeToImage` mode with the default quality (128 pixels per em).
+    pub fn rasterize() -> Self {
+        Self::RasterizeToImage { pixels_per_em: 128 }
+    }
+    /// Creates a `RasterizeToImage` mode with a custom quality setting.
+    pub fn rasterize_with_quality(pixels_per_em: u16) -> Self {
+        Self::RasterizeToImage { pixels_per_em }
+    }
+}
+
+/// Cache of rasterized emoji glyphs mapped to their XObject IDs.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct EmojiGlyphCache {
+    /// Maps (font_name, glyph_id) to the XObjectId of the rasterized image.
+    pub(crate) cache: ahash::HashMap<(String, u16), XObjectId>,
+}
+impl EmojiGlyphCache {
+    pub fn get(&self, font_name: &str, glyph_id: u16) -> Option<&XObjectId> {
+        self.cache.get(&(font_name.to_owned(), glyph_id))
+    }
+
+    pub fn insert(&mut self, font_name: String, glyph_id: u16, xobject_id: XObjectId) {
+        self.cache.insert((font_name, glyph_id), xobject_id);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GlyphMetrics {
@@ -131,11 +173,13 @@ impl PdfFontMap {
         } else {
             self.new_id()
         };
+        let has_color_glyphs = font.has_color_glyphs();
         self.map.insert(
             font_id.clone(),
             ParsedFont {
                 font,
                 font_name: font_id.0.clone(),
+                has_color_glyphs,
             },
         );
 
@@ -149,11 +193,13 @@ impl PdfFontMap {
     ) -> Result<FontRef, TuxPdfError> {
         let font = font.into();
         let font_id = self.new_id_with_prefix(FontId(name.into()));
+        let has_color_glyphs = font.has_color_glyphs();
         self.map.insert(
             font_id.clone(),
             ParsedFont {
                 font,
                 font_name: font_id.0.clone(),
+                has_color_glyphs,
             },
         );
 
@@ -252,7 +298,7 @@ impl FontType for InternalFontTypes<'_> {
 pub struct ParsedFont {
     pub(crate) font: ExternalFont,
     pub(crate) font_name: String,
-    // TODO
+    pub(crate) has_color_glyphs: bool,
 }
 impl FontType for ParsedFont {
     fn calculate_size_of_text<P: FontRenderSizeParams>(&self, text: &str, params: &P) -> Size {
@@ -260,12 +306,13 @@ impl FontType for ParsedFont {
         let mut height = f32::default();
         for c in text.chars() {
             if let Some(glyph_id) = self.get_glyph_id(c)
-                && let Some(metrics) = self.font.glyph_metrics(glyph_id) {
-                    let (glyph_width, glyph_height) =
-                        metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
-                    width += glyph_width;
-                    height = height.max(glyph_height.0);
-                }
+                && let Some(metrics) = self.font.glyph_metrics(glyph_id)
+            {
+                let (glyph_width, glyph_height) =
+                    metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
+                width += glyph_width;
+                height = height.max(glyph_height.0);
+            }
         }
         debug!(
             "Size of text {text:?} Width: {:#?}, Height: {:#?}",
@@ -278,14 +325,15 @@ impl FontType for ParsedFont {
     }
     fn size_of_char<P: FontRenderSizeParams>(&self, c: char, params: &P) -> Option<Size> {
         if let Some(glyph_id) = self.get_glyph_id(c)
-            && let Some(metrics) = self.font.glyph_metrics(glyph_id) {
-                let (glyph_width, glyph_height) =
-                    metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
-                return Some(Size {
-                    width: glyph_width,
-                    height: glyph_height,
-                });
-            }
+            && let Some(metrics) = self.font.glyph_metrics(glyph_id)
+        {
+            let (glyph_width, glyph_height) =
+                metrics.glyph_size_in_points(self.font.units_per_em(), params.font_size());
+            return Some(Size {
+                width: glyph_width,
+                height: glyph_height,
+            });
+        }
         None
     }
 
@@ -489,6 +537,21 @@ impl From<FontRef> for Object {
     }
 }
 
+/// Encodes a Unicode codepoint as a UTF-16BE hex string for use in PDF ToUnicode CMaps.
+///
+/// BMP characters (U+0000..U+FFFF) are encoded as 4 hex digits.
+/// Supplementary plane characters (U+10000+) are encoded as a UTF-16 surrogate pair (8 hex digits).
+fn unicode_to_utf16be_hex(unicode: u32) -> String {
+    if unicode > 0xFFFF {
+        let code = unicode - 0x10000;
+        let high = 0xD800 + (code >> 10);
+        let low = 0xDC00 + (code & 0x3FF);
+        format!("{high:04X}{low:04X}")
+    } else {
+        format!("{unicode:04X}")
+    }
+}
+
 fn generate_cid_to_unicode_map(face_name: String, all_cmap_blocks: Vec<Vec<(u32, u32)>>) -> String {
     let mut cid_to_unicode_map = gid_to_unicode_beg(face_name.as_str()).to_string();
 
@@ -498,7 +561,9 @@ fn generate_cid_to_unicode_map(face_name: String, all_cmap_blocks: Vec<Vec<(u32,
     {
         cid_to_unicode_map.push_str(format!("{} beginbfchar\r\n", cmap_block.len()).as_str());
         for (glyph_id, unicode) in cmap_block {
-            cid_to_unicode_map.push_str(format!("<{glyph_id:04x}> <{unicode:04x}>\n").as_str());
+            cid_to_unicode_map.push_str(
+                format!("<{glyph_id:04X}> <{}>\n", unicode_to_utf16be_hex(unicode)).as_str(),
+            );
         }
         cid_to_unicode_map.push_str("endbfchar\r\n");
     }
@@ -543,6 +608,47 @@ CMapName currentdict /CMap defineresource pop
 end
 end
 "#;
+
+#[cfg(test)]
+mod cmap_tests {
+    use super::unicode_to_utf16be_hex;
+
+    #[test]
+    fn bmp_character() {
+        // 'A' = U+0041
+        assert_eq!(unicode_to_utf16be_hex(0x0041), "0041");
+    }
+
+    #[test]
+    fn bmp_cjk_character() {
+        // CJK character U+4E2D
+        assert_eq!(unicode_to_utf16be_hex(0x4E2D), "4E2D");
+    }
+
+    #[test]
+    fn supplementary_plane_emoji() {
+        // 😊 = U+1F60A → surrogate pair D83D DE0A
+        assert_eq!(unicode_to_utf16be_hex(0x1F60A), "D83DDE0A");
+    }
+
+    #[test]
+    fn supplementary_plane_emoji_thumbs_up() {
+        // 👍 = U+1F44D → surrogate pair D83D DC4D
+        assert_eq!(unicode_to_utf16be_hex(0x1F44D), "D83DDC4D");
+    }
+
+    #[test]
+    fn boundary_bmp_max() {
+        // U+FFFF is the last BMP character
+        assert_eq!(unicode_to_utf16be_hex(0xFFFF), "FFFF");
+    }
+
+    #[test]
+    fn boundary_first_supplementary() {
+        // U+10000 is the first supplementary plane character → D800 DC00
+        assert_eq!(unicode_to_utf16be_hex(0x10000), "D800DC00");
+    }
+}
 
 #[cfg(test)]
 pub(crate) mod font_tests {

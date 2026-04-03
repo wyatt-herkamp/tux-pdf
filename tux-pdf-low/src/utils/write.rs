@@ -1,6 +1,6 @@
 use crate::{
-    types::{Object, ObjectId, PdfObjectType},
     LowTuxPdfError,
+    types::{Object, ObjectId, PdfObjectType},
 };
 
 pub fn write_object<W>(

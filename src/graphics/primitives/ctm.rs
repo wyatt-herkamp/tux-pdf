@@ -15,10 +15,10 @@ use tracing::debug;
 use tux_pdf_low::types::Object;
 
 use crate::{
+    TuxPdfError,
     document::PdfResources,
     graphics::{OperationKeys, OperationWriter, PdfObjectType, PdfPosition},
     units::Pt,
-    TuxPdfError,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Default)]

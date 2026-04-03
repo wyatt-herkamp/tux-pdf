@@ -5,9 +5,10 @@ mod resources;
 use std::{io::Write, mem};
 
 use crate::{
+    TuxPdfError, TuxPdfResult,
+    document::emoji_rasterizer,
     graphics::{OperationWriter, PdfObject, PdfObjectType},
     page::PdfPage,
-    TuxPdfError, TuxPdfResult,
 };
 use ahash::{HashMap, HashMapExt};
 pub use meta::*;
@@ -63,6 +64,14 @@ impl PdfDocument {
     {
         self.resources.xobjects.add_xobject(xobject.into())
     }
+    /// Sets how color emoji fonts are rendered in the PDF.
+    ///
+    /// By default, emoji fonts are embedded as-is (`EmbedFont`), which depends on
+    /// PDF viewer support. Use `EmojiRenderMode::rasterize()` to convert emoji glyphs
+    /// to images for maximum compatibility.
+    pub fn set_emoji_render_mode(&mut self, mode: EmojiRenderMode) {
+        self.resources.emoji_render_mode = mode;
+    }
     /// Saves the PDF document to a writer
     pub fn save_to<W: Write>(self, writer: &mut W) -> TuxPdfResult<()> {
         let document = self.write_into_pdf_document_writer()?;
@@ -76,6 +85,10 @@ impl PdfDocument {
         // Note to future developers: This function requires a very specific order of operations.
         // When writing pages they require the XObjects and Fonts to still be in the resources map
         // Layers can be immeidately removed from resources as nothing else will access them from the resources map
+
+        // Pre-rasterize emoji glyphs if RasterizeToImage mode is active.
+        // Must happen before pages are written so XObjects are available.
+        self.prepare_emoji_resources()?;
 
         let mut writer = DocumentWriter::default();
         {
@@ -180,6 +193,140 @@ impl PdfDocument {
     }
     pub fn add_page(&mut self, page: PdfPage) {
         self.pages.push(page);
+    }
+
+    /// Pre-rasterizes emoji glyphs used in the document when `RasterizeToImage` mode is active.
+    ///
+    /// Called automatically during `write_into_pdf_document_writer()`.
+    fn prepare_emoji_resources(&mut self) -> TuxPdfResult<()> {
+        let pixels_per_em = match self.resources.emoji_render_mode {
+            EmojiRenderMode::RasterizeToImage { pixels_per_em } => pixels_per_em,
+            EmojiRenderMode::EmbedFont => return Ok(()),
+        };
+
+        // Collect all (font_name, glyph_id) pairs that need rasterization
+        let mut needed_glyphs: Vec<(String, u16)> = Vec::new();
+
+        for page in &self.pages {
+            Self::collect_emoji_glyphs_from_objects(
+                &page.contents,
+                &self.resources.fonts,
+                &mut needed_glyphs,
+            );
+        }
+
+        // Also check layers
+        for layer in self.resources.layers.map.values() {
+            Self::collect_emoji_glyphs_from_objects(
+                &layer.operations,
+                &self.resources.fonts,
+                &mut needed_glyphs,
+            );
+        }
+
+        // Deduplicate
+        needed_glyphs.sort();
+        needed_glyphs.dedup();
+
+        let total = needed_glyphs.len();
+        tracing::info!(total, "Preparing emoji glyph rasterization");
+
+        // Group by font_name to avoid repeated lookups
+        let mut by_font: ahash::HashMap<String, Vec<u16>> = ahash::HashMap::new();
+        for (font_name, glyph_id) in needed_glyphs {
+            by_font.entry(font_name).or_default().push(glyph_id);
+        }
+
+        let mut done = 0usize;
+        for (font_name, glyph_ids) in by_font {
+            let font = self
+                .resources
+                .fonts
+                .map
+                .values()
+                .find(|f| f.font_name == font_name);
+
+            let Some(font) = font else {
+                continue;
+            };
+
+            let rasterized =
+                emoji_rasterizer::rasterize_glyphs(&font.font, &glyph_ids, pixels_per_em);
+
+            for (glyph_id, result) in glyph_ids.into_iter().zip(rasterized) {
+                done += 1;
+                if done.is_multiple_of(100) || done == total {
+                    tracing::info!(done, total, "Emoji rasterization progress");
+                }
+                match result {
+                    Ok(image) => {
+                        let xobject_id = self.resources.xobjects.add_xobject(image.into());
+                        self.resources
+                            .emoji_cache
+                            .insert(font_name.clone(), glyph_id, xobject_id);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            glyph_id,
+                            %font_name,
+                            "Failed to rasterize emoji glyph: {e}"
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn collect_emoji_glyphs_from_objects(
+        objects: &[PdfObject],
+        fonts: &PdfFontMap,
+        out: &mut Vec<(String, u16)>,
+    ) {
+        use crate::graphics::text::TextModifier;
+
+        for object in objects {
+            let PdfObject::TextBlock(block) = object else {
+                continue;
+            };
+
+            // Determine the default font for this block
+            let default_font_ref = &block.style.font_ref;
+
+            for line in block.content.iter() {
+                for item in &line.items {
+                    // Check if this item overrides the font
+                    let font_ref = item
+                        .modifiers
+                        .iter()
+                        .find_map(|m| match m {
+                            TextModifier::Font(f) => Some(f),
+                            _ => None,
+                        })
+                        .unwrap_or(default_font_ref);
+
+                    let FontRef::External(font_id) = font_ref else {
+                        continue;
+                    };
+
+                    let Some(parsed_font) = fonts.get_external_font(font_id) else {
+                        continue;
+                    };
+
+                    if !parsed_font.has_color_glyphs {
+                        continue;
+                    }
+
+                    // Collect glyph IDs for each character in this text item
+                    for c in item.text.chars() {
+                        if let Some(glyph_id) = parsed_font.font.glyph_id(c) {
+                            out.push((parsed_font.font_name.clone(), glyph_id));
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

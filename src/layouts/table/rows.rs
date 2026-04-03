@@ -1,11 +1,11 @@
 use crate::{
+    TuxPdfError,
     document::PdfDocument,
     graphics::{
-        size::{RenderSize, Size},
         TextBlockContent, TextStyle,
+        size::{RenderSize, Size},
     },
     layouts::table::builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
-    TuxPdfError,
 };
 
 use super::{CellStyle, ColumnStyle, RowStyles};
@@ -64,8 +64,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum TableValue {
     Text(TextBlockContent),
     #[default]

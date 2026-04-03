@@ -1,8 +1,8 @@
 use tracing::{debug, error, warn};
 
-use super::{types::*, TableLayout};
+use super::{TableLayout, types::*};
 use crate::{
-    graphics::{size::Size, PdfPosition},
+    graphics::{PdfPosition, size::Size},
     layouts::table::{TableError, TablePageRules},
     units::{Pt, UnitType},
 };
@@ -285,7 +285,11 @@ impl TableLayoutBuilder {
                 match width_override {
                     TableColumnMinWidth::Fixed(pt) => {
                         if pt < column.width {
-                            error!(?pt, ?column, "Fixed width is less than current width. Skipping until we can handle text wrapping");
+                            error!(
+                                ?pt,
+                                ?column,
+                                "Fixed width is less than current width. Skipping until we can handle text wrapping"
+                            );
                             continue;
                         }
                         column.width = pt;
@@ -293,7 +297,11 @@ impl TableLayoutBuilder {
                     TableColumnMinWidth::Percentage(percentage) => {
                         let new_width = self.max_grid_size.width * percentage;
                         if new_width < column.width {
-                            error!(?new_width, ?column, "Percentage width is less than current width. Skipping until we can handle text wrapping");
+                            error!(
+                                ?new_width,
+                                ?column,
+                                "Percentage width is less than current width. Skipping until we can handle text wrapping"
+                            );
                             continue;
                         }
                         column.width = new_width;

@@ -32,7 +32,7 @@ impl From<FontRef> for ResourceNotRegistered {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct PdfResources {
     /// Fonts found in the PDF file, indexed by the sha256 of their contents
     pub fonts: PdfFontMap,
@@ -42,6 +42,10 @@ pub struct PdfResources {
     //pub extgstates: ExtendedGraphicsStateMap,
     /// Map of optional content groups
     pub layers: PdfLayerMap,
+    /// Controls how color emoji fonts are rendered
+    pub emoji_render_mode: EmojiRenderMode,
+    /// Cache of rasterized emoji glyphs
+    pub(crate) emoji_cache: EmojiGlyphCache,
 }
 impl PdfResources {
     pub fn get_font_type(&self, font_id: &FontRef) -> Option<InternalFontTypes<'_>> {

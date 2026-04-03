@@ -1,19 +1,19 @@
 mod test_utils;
 use chrono::Local;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{RngExt, SeedableRng, rngs::StdRng};
 use test_utils::{destination_dir, fonts_dir};
 use tux_pdf::{
-    document::{owned_ttf_parser::OwnedPdfTtfFont, PdfDocument},
+    document::{PdfDocument, owned_ttf_parser::OwnedPdfTtfFont},
     graphics::{
+        TextStyle,
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
         styles::{Margin, Padding},
-        TextStyle,
     },
     layouts::table::{
-        builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
         Column, Row, RowStyles, Table, TablePageRules, TableStyles, TableValue,
+        builder::{GridStyleGroup, TableColumnMaxWidth, TableColumnMinWidth},
     },
-    page::{page_sizes::A4, PdfPage},
+    page::{PdfPage, page_sizes::A4},
     units::UnitType,
 };
 
@@ -140,7 +140,7 @@ fn table_test_large_column_but_limited_space() -> anyhow::Result<()> {
         background_color: Some(WHITE_RGB),
         ..Default::default()
     };
-    let mut random = StdRng::from_os_rng();
+    let mut random = StdRng::from_rng(&mut rand::rng());
     let timestamp = Local::now().to_string();
     let short_timestamp = Local::now().format("%Y-%m-%d %H:%M").to_string();
     let mut actual_rows = Vec::new();

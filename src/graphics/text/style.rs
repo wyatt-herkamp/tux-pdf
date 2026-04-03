@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 mod modifiers;
 use crate::{
+    TuxPdfError,
     document::{BuiltinFont, FontRef, FontRenderSizeParams, PdfResources},
     graphics::{
-        color::{Color, ColorWriter, HasColorParams},
         OperationWriter, PdfObjectType,
+        color::{Color, ColorWriter, HasColorParams},
     },
     units::Pt,
     utils::{IsEmpty, PartailOrFull, PartialStruct},
-    TuxPdfError,
 };
 pub use modifiers::*;
 

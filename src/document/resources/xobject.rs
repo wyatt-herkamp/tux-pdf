@@ -6,7 +6,7 @@ pub use form::*;
 use std::collections::BTreeMap;
 use tux_pdf_low::types::{Dictionary, Object};
 
-use crate::{document::DocumentWriter, TuxPdfError};
+use crate::{TuxPdfError, document::DocumentWriter};
 
 use super::{IdType, ObjectMapType};
 #[derive(Debug, PartialEq, Clone, Eq, PartialOrd, Ord)]

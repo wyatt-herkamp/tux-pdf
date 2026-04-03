@@ -2,7 +2,7 @@ use tux_pdf_low::types::Object;
 
 use crate::{
     document::PdfResources,
-    graphics::{points_to_object_array, OperationWriter, PdfObjectType},
+    graphics::{OperationWriter, PdfObjectType, points_to_object_array},
     units::Pt,
     utils::copy_into,
 };

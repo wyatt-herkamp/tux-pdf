@@ -10,7 +10,7 @@ authors = ["Wyatt Jacob Herkamp <wherkamp@gmail.com>"]
 [workspace.dependencies]
 thiserror = "2"
 tracing = { version = "0.1" }
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 derive_more = { version = "2", features = ["from", "into"] }
 time = { version = "0.3", features = ["local-offset", "formatting"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -31,10 +31,10 @@ serde_json = "1"
 thiserror.workspace = true
 ttf-parser = "0.25"
 
-rand = { version = "0.9" }
+rand = { version = "0.10" }
 strum.workspace = true
 
-resvg = { version = "0.45", default-features = false, optional = true }
+resvg = { version = "0.47", default-features = false, optional = true }
 image = { version = "0.25", default-features = false }
 bitflags = "2"
 either = "1"
@@ -43,6 +43,7 @@ tracing.workspace = true
 derive_more.workspace = true
 
 ahash = "0.8"
+rustc-hash = "2"
 
 taffy = { version = "0.8", optional = true }
 

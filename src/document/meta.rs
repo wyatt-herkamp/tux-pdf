@@ -4,7 +4,7 @@ use tux_pdf_low::types::{Dictionary, Object, ObjectId};
 
 use crate::{
     time_impl::PdfDateTimeType,
-    utils::{strum_into_name, IsEmpty},
+    utils::{IsEmpty, strum_into_name},
 };
 
 use super::{

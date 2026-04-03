@@ -11,9 +11,9 @@ use crate::{
 };
 
 use super::{
+    OperationKeys, OperationWriter, PdfObject, PdfObjectType,
     color::{Color, ColorWriter},
     shapes::RectangleStyleType,
-    OperationKeys, OperationWriter, PdfObject, PdfObjectType,
 };
 pub(crate) fn add_two_optional<U>(a: Option<U>, b: Option<U>) -> Option<U>
 where

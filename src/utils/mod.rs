@@ -45,7 +45,7 @@ pub trait PartialStruct: IsEmpty {
     type FullStruct: Clone;
 
     fn merge_with_full<'full>(&self, full: &'full Self::FullStruct)
-        -> Cow<'full, Self::FullStruct>;
+    -> Cow<'full, Self::FullStruct>;
 }
 
 impl<T> PartialStruct for Option<T>

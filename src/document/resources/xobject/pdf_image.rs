@@ -15,13 +15,13 @@ use tux_pdf_low::{
 use utils::pull_alpha_out_of_rgb;
 mod utils;
 use crate::{
+    TuxPdfError,
     graphics::{
         color::{ColorBits, ColorSpace},
         primitives::ctm::CurTransMat,
         size::Size,
     },
     units::Px,
-    TuxPdfError,
 };
 
 #[derive(Debug, Clone, PartialEq)]

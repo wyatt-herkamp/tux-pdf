@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
 use crate::{
-    document::FontRef,
-    graphics::{state::TextBlockState, OperationWriter, TextOperations},
-    units::Pt,
     TuxPdfError,
+    document::FontRef,
+    graphics::{OperationWriter, TextOperations, state::TextBlockState},
+    units::Pt,
 };
 
 #[derive(Debug, Clone, PartialEq)]

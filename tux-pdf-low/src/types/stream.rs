@@ -1,8 +1,8 @@
 use crate::LowTuxPdfError;
 
 use super::{
-    dictionary::Dictionary, DictionaryIoWriter, DictionaryType, PdfObjectType, PdfType,
-    WritableDictionary,
+    DictionaryIoWriter, DictionaryType, PdfObjectType, PdfType, WritableDictionary,
+    dictionary::Dictionary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

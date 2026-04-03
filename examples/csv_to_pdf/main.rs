@@ -2,20 +2,20 @@ use std::{fs::File, path::PathBuf};
 
 use clap::Parser;
 use tux_pdf::{
-    document::{static_ttf_parser::StaticTtfFace, PdfDocument},
+    TuxPdfError,
+    document::{PdfDocument, static_ttf_parser::StaticTtfFace},
     graphics::{
+        TextStyle,
         color::{BLACK_RGB, GRAY_RGB, WHITE_RGB},
         styles::Margin,
-        TextStyle,
     },
     layouts::table::builder::{GridStyleGroup, TableColumnMaxWidth},
     layouts::table::{
         Column, ColumnStyle, Row, RowStyles, Table, TablePageRules, TableStyles,
         TableValueWithStyle,
     },
-    page::{page_sizes::A4, PdfPage},
+    page::{PdfPage, page_sizes::A4},
     units::{Pt, UnitType},
-    TuxPdfError,
 };
 static ROBOTO_FONT: &[u8] = include_bytes!("../../tests/fonts/Roboto/Roboto-Regular.ttf");
 #[derive(Debug, Clone, Parser)]

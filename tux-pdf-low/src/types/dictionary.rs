@@ -3,7 +3,7 @@ pub mod stream_header;
 pub mod trailer;
 use crate::LowTuxPdfError;
 
-use super::{string::Name, NameRef, Object, PdfObjectType};
+use super::{NameRef, Object, PdfObjectType, string::Name};
 pub static START_DICTIONARY: &[u8] = b"<<";
 pub static END_DICTIONARY: &[u8] = b">>";
 

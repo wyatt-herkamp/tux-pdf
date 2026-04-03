@@ -2,9 +2,12 @@ use std::{mem, ops::Deref};
 
 use crate::{
     TuxPdfError,
-    document::{FontRef, FontType, PdfDocument},
+    document::{
+        ExternalLoadedFont, FontRef, FontType, GlyphMetrics, InternalFontTypes, PdfDocument,
+    },
     graphics::{
-        OperationKeys,
+        OperationKeys, PdfObjectType, PdfPosition,
+        primitives::ctm::CurTransMat,
         size::{RenderSize, Size},
         state_from_modifiers,
     },
@@ -17,6 +20,22 @@ use tux_pdf_low::types::Object;
 use super::{
     OperationWriter, TextBlockState, TextModifier, TextOperations, TextStyle, write_modifiers,
 };
+
+/// Tracks the absolute cursor position during text rendering.
+///
+/// Used when emoji images need to be placed inline, requiring knowledge
+/// of the current absolute position to break out of BT/ET and re-enter.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct TextCursor {
+    pub x: Pt,
+    pub y: Pt,
+    /// The origin position from the initial BT/Td. After breaking out of BT for emoji,
+    /// we re-enter BT at this origin so that subsequent relative Td operations
+    /// (e.g., line spacing) remain correct.
+    pub origin_x: Pt,
+    #[allow(dead_code)]
+    pub origin_y: Pt,
+}
 
 /// A text item is a string with a list of modifiers
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -125,14 +144,25 @@ impl TextItem {
         self,
         current_state: &TextBlockState,
         writer: &mut OperationWriter,
+        cursor: &mut TextCursor,
     ) -> Result<Size, TuxPdfError> {
-        let state = write_modifiers(self.modifiers, current_state, writer)?;
+        let Self { text, modifiers } = self;
+        let state = write_modifiers(modifiers, current_state, writer)?;
 
         debug!(?state, "Text State for Text Item");
+
+        // Check if this item uses a color emoji font with cached glyphs
+        if let InternalFontTypes::External(parsed_font) = &state.font_type
+            && parsed_font.has_color_glyphs
+            && !state.resources.emoji_cache.is_empty()
+        {
+            return Self::write_emoji_images(&text, &state, parsed_font, writer, cursor);
+        }
+
         let text_size = state
             .font_type
-            .calculate_size_of_text(&self.text, state.as_ref());
-        let text = state.font_type.encode_text(&self.text);
+            .calculate_size_of_text(&text, state.as_ref());
+        let text = state.font_type.encode_text(&text);
 
         writer.add_operation(
             TextOperations::ShowText,
@@ -140,7 +170,126 @@ impl TextItem {
                 text,
             ))],
         );
+
+        cursor.x += text_size.width;
         Ok(text_size)
+    }
+
+    /// Renders emoji characters as inline images by breaking out of BT/ET.
+    fn write_emoji_images(
+        text: &str,
+        state: &TextBlockState<'_>,
+        parsed_font: &crate::document::ParsedFont,
+        writer: &mut OperationWriter,
+        cursor: &mut TextCursor,
+    ) -> Result<Size, TuxPdfError> {
+        let emoji_cache = &state.resources.emoji_cache;
+        let font_name = &parsed_font.font_name;
+        let font_size = state.font_size;
+        let units_per_em = parsed_font.font.units_per_em();
+
+        let mut total_width = Pt::default();
+        let mut max_height = Pt::default();
+
+        for c in text.chars() {
+            let Some(glyph_id) = parsed_font.font.glyph_id(c) else {
+                continue;
+            };
+
+            // Get glyph metrics for positioning
+            let glyph_metrics: Option<GlyphMetrics> = parsed_font.font.glyph_metrics(glyph_id);
+            let (glyph_width, glyph_height) = glyph_metrics
+                .map(|m| m.glyph_size_in_points(units_per_em, font_size))
+                .unwrap_or((font_size, font_size));
+
+            if let Some(xobject_id) = emoji_cache.get(font_name, glyph_id) {
+                // End current text object
+                writer.push_empty_op(TextOperations::EndText);
+
+                // Draw the emoji image
+                writer.save_graphics_state();
+
+                // PDF text cursor.y is the baseline. The rasterized emoji image covers
+                // the full ascender-to-descender range (viewBox "0 -asc em asc-desc").
+                // Image width = units_per_em, image height = ascender - descender.
+                // Scale: width maps to font_size, height maps to the full asc-desc range.
+                let ascender = parsed_font.font.ascender() as f32;
+                let descender = parsed_font.font.descender() as f32;
+                let scale_factor = font_size.0 / units_per_em as f32;
+
+                let emoji_width = font_size; // units_per_em * scale_factor = font_size
+                let emoji_height = Pt((ascender - descender) * scale_factor);
+                let y_pos = cursor.y + Pt(descender * scale_factor);
+
+                let transforms = vec![
+                    CurTransMat::Scale(emoji_width, emoji_height),
+                    CurTransMat::Position(PdfPosition {
+                        x: cursor.x,
+                        y: y_pos,
+                    }),
+                ];
+                transforms.write(state.resources, writer)?;
+
+                writer.add_operation(OperationKeys::PaintXObject, vec![xobject_id.clone().into()]);
+                writer.restore_graphics_state();
+
+                // Advance cursor by the glyph's actual advance width (may be wider than
+                // the em-square, e.g. NotoColorEmoji uses ~1275 units vs 1024 em)
+                cursor.x += glyph_width;
+                total_width += glyph_width;
+
+                // Re-enter text mode with absolute positioning via Tm.
+                // Tm sets both the text matrix AND text line matrix, so subsequent
+                // relative Td (e.g., line spacing) will be relative to this position.
+                // We set the line matrix to (origin_x, cursor.y) so that a later
+                // Td(0, lineHeight) correctly moves to the next line at the left margin,
+                // then use a relative Td to advance X to the current cursor position.
+                writer.push_empty_op(TextOperations::BeginText);
+                writer.add_operation(
+                    TextOperations::SetTextMatrix,
+                    vec![
+                        Object::Real(1.0),
+                        Object::Real(0.0),
+                        Object::Real(0.0),
+                        Object::Real(1.0),
+                        cursor.origin_x.into(),
+                        cursor.y.into(),
+                    ],
+                );
+                // Advance from line start to current cursor X
+                writer.add_operation(
+                    TextOperations::TextPosition,
+                    PdfPosition {
+                        x: cursor.x - cursor.origin_x,
+                        y: Pt::default(),
+                    }
+                    .into(),
+                );
+                // Re-set font (will be overridden by Q if inside a modifier block)
+                writer.add_operation(
+                    TextOperations::TextFont,
+                    vec![state.font.clone().into(), font_size.into()],
+                );
+            } else {
+                // No cached image, fall back to text rendering
+                let text = parsed_font.encode_text(&c.to_string());
+                writer.add_operation(
+                    TextOperations::ShowText,
+                    vec![Object::String(tux_pdf_low::types::PdfString::Hexadecimal(
+                        text,
+                    ))],
+                );
+                cursor.x += glyph_width;
+                total_width += glyph_width;
+            }
+
+            max_height = max_height.max(glyph_height);
+        }
+
+        Ok(Size {
+            width: total_width,
+            height: max_height,
+        })
     }
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -168,6 +317,7 @@ impl TextLine {
         self,
         current_state: &TextBlockState,
         writer: &mut OperationWriter,
+        cursor: &mut TextCursor,
     ) -> Result<Size, TuxPdfError> {
         let mut line_size: Size = Size::default();
         write_modifiers(self.modifiers, current_state, writer)?;
@@ -179,7 +329,7 @@ impl TextLine {
             } else {
                 false
             };
-            let item_size = item.write(current_state, writer)?;
+            let item_size = item.write(current_state, writer, cursor)?;
             if restore {
                 writer.push_empty_op(OperationKeys::RestoreGraphicsState);
             }

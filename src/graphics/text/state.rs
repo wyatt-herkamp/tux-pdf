@@ -1,9 +1,9 @@
 use crate::{
+    TuxPdfError,
     document::{FontRef, FontRenderSizeParams, InternalFontTypes, PdfResources},
     graphics::OperationWriter,
     units::Pt,
     utils::IsEmpty,
-    TuxPdfError,
 };
 
 use super::{TextOperations, TextStyle};
@@ -102,14 +102,15 @@ impl<'resources> UpdatingTextBlockState<'_, 'resources> {
             self.original.font_type
         };
         if let Some(writer) = writer
-            && (self.font.is_some() || self.font_size.is_some()) {
-                let font = self.font.as_ref().unwrap_or(&self.original.font);
-                let font_size = self.font_size.unwrap_or(self.original.font_size);
-                writer.add_operation(
-                    TextOperations::TextFont,
-                    vec![font.clone().into(), font_size.into()],
-                );
-            }
+            && (self.font.is_some() || self.font_size.is_some())
+        {
+            let font = self.font.as_ref().unwrap_or(&self.original.font);
+            let font_size = self.font_size.unwrap_or(self.original.font_size);
+            writer.add_operation(
+                TextOperations::TextFont,
+                vec![font.clone().into(), font_size.into()],
+            );
+        }
         let result = TextBlockState {
             resources: self.original.resources,
             font: self.font.unwrap_or_else(|| self.original.font.clone()),
